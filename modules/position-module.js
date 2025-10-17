@@ -12,11 +12,11 @@ export const PositionModule = {
     const wrap = document.createElement("div");
     wrap.className = "card";
     wrap.innerHTML = `
-			<form id="posForm" style="margin-bottom:12px;display:grid;gap:8px;max-width:520px;">
-				<input id="posTitle" placeholder="Chức danh" required />
-				<input id="posDesc" placeholder="Mô tả" />
-				<button class="primary">Thêm</button>
-			</form>
+      <form id="posForm" style="margin-bottom:12px;display:grid;gap:8px;max-width:520px;">
+        <input id="posTitle" placeholder="Chức danh" required />
+        <input id="posDesc" placeholder="Mô tả" />
+        <button class="primary">Thêm</button>
+      </form>
 			<table class="table"><thead><tr><th>Chức danh</th><th>Thao tác</th></tr></thead><tbody id="posBody"></tbody></table>
 		`;
     viewEl.appendChild(wrap);
@@ -40,11 +40,10 @@ export const PositionModule = {
       e.preventDefault();
       const title = wrap.querySelector("#posTitle").value.trim();
       const description = wrap.querySelector("#posDesc").value.trim();
-      const salaryBase = Number(wrap.querySelector("#posSalary").value);
-      if (!title || salaryBase <= 0) return;
+      if (!title) return;
       await delay(200);
       const list = EmployeeDb.getAllPositions();
-      list.push({ id: Date.now(), title, description, salaryBase });
+      list.push({ id: Date.now(), title, description });
       EmployeeDb.savePositions(list);
       e.target.reset();
       render();
