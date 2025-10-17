@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="vi">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>ASM HRM - Vanilla JS</title>
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <div id="app" class="app">
+      <aside class="sidebar">
+        <div class="brand">HRM</div>
+        <nav class="menu">
+          <button data-route="dashboard">Dashboard</button>
+          <button data-route="employees-add">Thêm Nhân viên</button>
+          <button data-route="employees-edit">Sửa Nhân viên</button>
+          <button data-route="employees-delete">Xóa Nhân viên</button>
+          <button data-route="employees-search">Tìm kiếm Nhân viên</button>
+          <button data-route="departments">Phòng ban</button>
+          <button data-route="positions">Vị trí</button>
+          <button data-route="salary">Lương</button>
+          <button data-route="attendance">Chấm công</button>
+          <button data-route="leave">Nghỉ phép</button>
+          <button data-route="performance">Hiệu suất</button>
+          <button id="logoutBtn" class="logout">Đăng xuất</button>
+        </nav>
+      </aside>
+      <main class="content">
+        <header class="topbar">
+          <h1 id="pageTitle">Dashboard</h1>
+          <div style="display: flex; gap: 8px">
+            <button id="themeToggle" class="secondary">Toggle Theme</button>
+            <button id="resetBtn" class="danger">Reset Data</button>
+          </div>
+        </header>
+        <section id="view" class="view"></section>
+      </main>
+    </div>
+    <script type="module" src="app.js"></script>
+  </body>
+</html>
