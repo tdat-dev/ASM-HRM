@@ -39,6 +39,13 @@ export const DepartmentModule = {
       const name = wrap.querySelector("#deptName").value.trim();
       if (!name) return;
       const list = EmployeeDb.getAllDepartments();
+      const existed = list.some(
+        (department) => department.name.toLowerCase() === name.toLowerCase()
+      );
+      if (existed) {
+        alert("Phòng ban đã tồn tại");
+        return;
+      }
       list.push({ id: Date.now(), name, managerId: null });
       EmployeeDb.saveDepartments(list);
       wrap.querySelector("#deptForm").reset();

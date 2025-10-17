@@ -1,3 +1,5 @@
+import { validateEmployeeId, validateRating } from "../utils/validators.js";
+
 const REVIEWS_KEY = "hrm_reviews";
 
 // Đọc toàn bộ đánh giá hiệu suất từ LocalStorage
@@ -14,6 +16,18 @@ export const PerformanceModule = {
   // Thêm đánh giá mới cho nhân viên với rating và feedback tương ứng
   addReview(employeeId, rating, feedback) {
     if (!employeeId || !rating) throw new Error("Thiếu dữ liệu");
+    const messages = [];
+    const { ok, errors } = validateEmployeeId(employeeId);
+    if (!ok) {
+      messages.push(...errors);
+    }
+    const { ok: ratingOk, errors: ratingErrors } = validateRating(rating);
+    if (!ratingOk) {
+      messages.push(...ratingErrors);
+    }
+    if (messages.length > 0) {
+      throw new Error(messages.join(", "));
+    }
     const list = read();
     list.push({
       id: Date.now(),
@@ -86,7 +100,12 @@ export const PerformanceModule = {
       const id = Number(wrap.querySelector("#rvEmp").value);
       const rating = Number(wrap.querySelector("#rvRate").value);
       const fb = wrap.querySelector("#rvFb").value.trim();
-      this.addReview(id, rating, fb);
+      try {
+        this.addReview(id, rating, fb);
+      } catch (err) {
+        alert(err.message);
+        return;
+      }
       e.target.reset();
       render();
     });

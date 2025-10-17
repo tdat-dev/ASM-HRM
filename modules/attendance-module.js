@@ -1,3 +1,5 @@
+import { validateEmployeeId } from "../utils/validators.js";
+
 // Module quản lý chấm công (check-in, check-out)
 const ATTENDANCE_STORAGE_KEY = "hrm_attendance";
 const MILLISECONDS_PER_HOUR = 3600000; // 1 giờ = 3,600,000 milliseconds
@@ -23,6 +25,10 @@ export const AttendanceModule = {
    * Check-in cho nhân viên
    */
   checkIn(employeeId) {
+    const { ok, errors } = validateEmployeeId(employeeId);
+    if (!ok) {
+      throw new Error(errors[0]);
+    }
     const attendanceList = readAttendanceData();
     const todayDate = convertToDateString(Date.now());
 
@@ -52,6 +58,10 @@ export const AttendanceModule = {
    * Check-out cho nhân viên
    */
   checkOut(employeeId) {
+    const { ok, errors } = validateEmployeeId(employeeId);
+    if (!ok) {
+      throw new Error(errors[0]);
+    }
     const attendanceList = readAttendanceData();
     const todayDate = convertToDateString(Date.now());
 

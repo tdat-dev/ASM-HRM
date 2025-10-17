@@ -1,4 +1,5 @@
 import { EmployeeDb } from "./employee-db-module.js";
+import { validateEmployeeId } from "../utils/validators.js";
 
 export const DeleteEmployeeModule = {
   // Render quy trình tìm và xóa nhân viên theo ID
@@ -22,6 +23,13 @@ export const DeleteEmployeeModule = {
       const id = Number(document.getElementById("delEmpId").value);
       const emp = EmployeeDb.getEmployeeById(id);
       const area = document.getElementById("delArea");
+      const { ok, errors } = validateEmployeeId(id);
+      if (!ok) {
+        area.innerHTML = `<div class="alert error">${errors.join(
+          "<br>"
+        )}</div>`;
+        return;
+      }
       if (!emp) {
         area.innerHTML = '<div class="alert error">Không tìm thấy</div>';
         return;

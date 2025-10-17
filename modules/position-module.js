@@ -43,6 +43,13 @@ export const PositionModule = {
       if (!title) return;
       await delay(200);
       const list = EmployeeDb.getAllPositions();
+      const existed = list.some(
+        (position) => position.title.toLowerCase() === title.toLowerCase()
+      );
+      if (existed) {
+        alert("Vị trí đã tồn tại");
+        return;
+      }
       list.push({ id: Date.now(), title, description });
       EmployeeDb.savePositions(list);
       e.target.reset();

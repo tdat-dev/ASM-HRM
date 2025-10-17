@@ -1,5 +1,9 @@
 import { EmployeeDb } from "./employee-db-module.js";
-import { validateEmployeeInput } from "../utils/validators.js";
+import {
+  validateEmployeeInput,
+  validateDepartmentExists,
+  validatePositionExists,
+} from "../utils/validators.js";
 import { showAlert } from "../utils/dom.js";
 
 export const EditEmployeeModule = {
@@ -81,9 +85,25 @@ export const EditEmployeeModule = {
           salary: Number(document.getElementById("eSalary").value),
           hireDate: document.getElementById("eHire").value,
         };
+        const messages = [];
         const { ok, errors } = validateEmployeeInput(updated);
         if (!ok) {
-          showAlert(alertEl, "error", errors.join("<br>"));
+          messages.push(...errors);
+        }
+        const { ok: deptOk, errors: deptErrors } = validateDepartmentExists(
+          updated.departmentId
+        );
+        if (!deptOk) {
+          messages.push(...deptErrors);
+        }
+        const { ok: posOk, errors: posErrors } = validatePositionExists(
+          updated.positionId
+        );
+        if (!posOk) {
+          messages.push(...posErrors);
+        }
+        if (messages.length > 0) {
+          showAlert(alertEl, "error", messages.join("<br>"));
           return;
         }
         const list = EmployeeDb.getAllEmployees();

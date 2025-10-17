@@ -1,3 +1,5 @@
+import { validateEmployeeId, validateDateRange } from "../utils/validators.js";
+
 // Module quản lý nghỉ phép
 const LEAVES_STORAGE_KEY = "hrm_leaves";
 const DEFAULT_ANNUAL_LEAVE_DAYS = 20; // Số ngày phép mặc định mỗi năm
@@ -5,6 +7,7 @@ const MILLISECONDS_PER_DAY = 86400000; // 1 ngày = 86,400,000 milliseconds
 const LEAVE_STATUS_PENDING = "pending";
 const LEAVE_STATUS_APPROVED = "approved";
 const LEAVE_TYPE_ANNUAL = "annual";
+const LEAVE_TYPE_SICK = "sick";
 
 // Đọc danh sách yêu cầu nghỉ phép đã lưu
 function readLeaveData() {
@@ -32,6 +35,26 @@ export const LeaveModule = {
   requestLeave(employeeId, startDate, endDate, leaveType) {
     if (!employeeId || !startDate || !endDate) {
       throw new Error("Thiếu dữ liệu");
+    }
+
+    const messages = [];
+    const { ok, errors } = validateEmployeeId(employeeId);
+    if (!ok) {
+      messages.push(...errors);
+    }
+    const { ok: dateOk, errors: dateErrors } = validateDateRange(
+      startDate,
+      endDate
+    );
+    if (!dateOk) {
+      messages.push(...dateErrors);
+    }
+    const allowedTypes = [LEAVE_TYPE_ANNUAL, LEAVE_TYPE_SICK];
+    if (!allowedTypes.includes(leaveType)) {
+      messages.push("Loại nghỉ phép không hợp lệ");
+    }
+    if (messages.length > 0) {
+      throw new Error(messages.join(", "));
     }
 
     const leaveList = readLeaveData();
@@ -107,7 +130,7 @@ export const LeaveModule = {
     const body = wrap.querySelector("#lvBody");
     // Render lại bảng yêu cầu nghỉ phép hiện thời
     const render = () => {
-      const list = read();
+      const list = readLeaveData();
       body.innerHTML = list
         .map(
           (leave) => `<tr>
