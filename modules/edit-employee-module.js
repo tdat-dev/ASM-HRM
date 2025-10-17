@@ -11,7 +11,7 @@ export const EditEmployeeModule = {
     box.className = "card";
     box.innerHTML = `
 			<form id="findEmpForm" style="margin-bottom:12px;">
-				<label>Mã nhân viên</label>
+				<label>Tên nhân viên</label>
 				<input id="editEmpUsername" type="text" placeholder="Nhập Tên..." />
 				<button class="primary" type="submit">Tải</button>
 			</form>
