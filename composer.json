@@ -1,0 +1,14 @@
+{
+  "name": "tdat-dev/asm-hrm",
+  "description": "Human Resource Management System built with Vanilla JS and PHP",
+  "type": "project",
+  "require": {
+    "php": "^7.4 || ^8.0"
+  },
+  "license": "MIT",
+  "authors": [
+    {
+      "name": "tdat-dev"
+    }
+  ]
+}
