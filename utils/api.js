@@ -5,14 +5,17 @@
 // Base URL của API - Tự động detect môi trường
 const API_BASE_URL = (() => {
   const hostname = window.location.hostname;
-  
+
   // Production (InfinityFree hoặc hosting khác)
-  if (hostname.includes('infinityfree.me') || hostname.includes('infinityfree.com')) {
-    return 'https://humanmanager.infinityfree.me/backend/api.php';
+  if (
+    hostname.includes("infinityfree.me") ||
+    hostname.includes("infinityfree.com")
+  ) {
+    return "https://humanmanager.infinityfree.me/backend/api.php";
   }
-  
+
   // Localhost development
-  return 'http://localhost/ASM-HRM/backend/api.php';
+  return "http://localhost/ASM-HRM/backend/api.php";
 })();
 
 /**
