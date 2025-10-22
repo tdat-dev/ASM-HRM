@@ -1,12 +1,9 @@
 import { EmployeeDb } from "./employee-db-module.js";
-
-// Giả lập độ trễ để mô phỏng tác vụ async nhẹ
-const delay = (milliseconds) =>
-  new Promise((resolve) => setTimeout(resolve, milliseconds));
+import { positionAPI } from "../utils/api.js";
 
 export const PositionModule = {
   // Render giao diện quản lý chức danh và xử lý thêm/xóa
-  mount(viewEl, titleEl) {
+  async mount(viewEl, titleEl) {
     titleEl.textContent = "Vị trí";
     viewEl.innerHTML = "";
     const wrap = document.createElement("div");
@@ -23,8 +20,8 @@ export const PositionModule = {
 
     const body = wrap.querySelector("#posBody");
     // Render lại bảng chức danh từ dữ liệu hiện tại
-    const render = () => {
-      const list = EmployeeDb.getAllPositions();
+    const render = async () => {
+      const list = await EmployeeDb.getAllPositions();
       body.innerHTML = list
         .map(
           (position) => `<tr>
@@ -34,26 +31,25 @@ export const PositionModule = {
         )
         .join("");
     };
-    render();
+    await render();
 
     wrap.querySelector("#posForm").addEventListener("submit", async (e) => {
       e.preventDefault();
       const title = wrap.querySelector("#posTitle").value.trim();
       const description = wrap.querySelector("#posDesc").value.trim();
       if (!title) return;
-      await delay(200);
-      const list = EmployeeDb.getAllPositions();
-      const existed = list.some(
-        (position) => position.title.toLowerCase() === title.toLowerCase()
-      );
-      if (existed) {
-        alert("Vị trí đã tồn tại");
-        return;
+
+      try {
+        await positionAPI.create({
+          title,
+          description,
+          salary_base: 0,
+        });
+        e.target.reset();
+        await render();
+      } catch (error) {
+        alert(error.message || "Có lỗi xảy ra");
       }
-      list.push({ id: Date.now(), title, description });
-      EmployeeDb.savePositions(list);
-      e.target.reset();
-      render();
     });
 
     body.addEventListener("click", async (e) => {
@@ -61,12 +57,12 @@ export const PositionModule = {
       if (target.matches("[data-del]")) {
         const id = Number(target.getAttribute("data-del"));
         if (window.confirm("Xóa vị trí?")) {
-          await delay(150);
-          const list = EmployeeDb.getAllPositions().filter(
-            (position) => position.id !== id
-          );
-          EmployeeDb.savePositions(list);
-          render();
+          try {
+            await positionAPI.delete(id);
+            await render();
+          } catch (error) {
+            alert(error.message || "Có lỗi xảy ra");
+          }
         }
       }
     });

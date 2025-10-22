@@ -16,7 +16,6 @@ const pageTitleEl = document.getElementById("pageTitle");
 const logoutBtn = document.getElementById("logoutBtn");
 const appEl = document.getElementById("app");
 const themeToggleBtn = document.getElementById("themeToggle");
-const resetBtn = document.getElementById("resetBtn");
 
 const THEME_KEY = "hrm_theme";
 
@@ -51,45 +50,32 @@ function initTheme() {
   }
 }
 
-// Xóa dữ liệu demo (trừ tài khoản) và trở về dashboard
-async function resetData() {
-  const confirm = window.confirm(
-    "Xóa dữ liệu HRM (employee/department/position/attendance/leaves/reviews)?"
-  );
-  if (!confirm) return;
-  // Clear domain data but keep users/session
-  const keys = [
-    "hrm_employees",
-    "hrm_departments",
-    "hrm_positions",
-    "hrm_attendance",
-    "hrm_leaves",
-    "hrm_reviews",
-  ];
-  keys.forEach((key) => localStorage.removeItem(key));
-  // Re-init base structures empty
-  localStorage.setItem("hrm_employees", JSON.stringify([]));
-  localStorage.setItem("hrm_departments", JSON.stringify([]));
-  localStorage.setItem("hrm_positions", JSON.stringify([]));
-  // Optionally reset view
-  EmployeeDb.ensureInitialized(); // will seed defaults if completely empty; if you want fully empty, comment this
-  navigate("dashboard");
-}
-
 // Định nghĩa các route và hàm mount tương ứng
 const routes = {
   dashboard: async () => {
     pageTitleEl.textContent = "Dashboard";
-    viewEl.innerHTML = "";
+    viewEl.innerHTML =
+      '<div style="text-align: center; padding: 40px;"><p>⏳ Đang tải dữ liệu...</p></div>';
 
-    // Lấy dữ liệu
-    const employees = EmployeeDb.getAllEmployees();
-    const departments = EmployeeDb.getAllDepartments();
-    const positions = EmployeeDb.getAllPositions();
+    // Lấy dữ liệu (AWAIT API calls)
+    const employees = await EmployeeDb.getAllEmployees();
+    const departments = await EmployeeDb.getAllDepartments();
+    const positions = await EmployeeDb.getAllPositions();
     const attendanceData = JSON.parse(
       localStorage.getItem("hrm_attendance") || "[]"
     );
     const leaveData = JSON.parse(localStorage.getItem("hrm_leaves") || "[]");
+
+    // Chuẩn hóa tiền tệ (API trả về dạng string, đôi khi kèm ký tự)
+    const normalizeMoney = (value) => {
+      if (value === null || value === undefined) {
+        return 0;
+      }
+      const cleaned =
+        typeof value === "string" ? value.replace(/[^0-9.-]/g, "") : value;
+      const number = Number(cleaned);
+      return Number.isFinite(number) ? number : 0;
+    };
 
     // Tính toán thống kê
     const totalEmployees = employees.length;
@@ -98,8 +84,10 @@ const routes = {
     const avgSalary =
       employees.length > 0
         ? Math.round(
-            employees.reduce((sum, emp) => sum + (emp.salary || 0), 0) /
-              employees.length
+            employees.reduce(
+              (sum, emp) => sum + normalizeMoney(emp.salary),
+              0
+            ) / employees.length
           )
         : 0;
 
@@ -113,11 +101,12 @@ const routes = {
     ).length;
 
     // Tính tổng chi phí lương hàng tháng
-    const totalMonthlyCost = employees.reduce(
-      (sum, emp) =>
-        sum + (emp.salary || 0) + (emp.bonus || 0) - (emp.deduction || 0),
-      0
-    );
+    const totalMonthlyCost = employees.reduce((sum, emp) => {
+      const salary = normalizeMoney(emp.salary);
+      const bonus = normalizeMoney(emp.bonus);
+      const deduction = normalizeMoney(emp.deduction);
+      return sum + salary + bonus - deduction;
+    }, 0);
 
     // Thống kê nhân viên theo phòng ban
     const empsByDept = departments.map((dept) => {
@@ -265,16 +254,13 @@ const routes = {
   performance: () => PerformanceModule.mount(viewEl, pageTitleEl),
 };
 
-// Gắn sự kiện cho menu sidebar và nút reset data
+// Gắn sự kiện cho menu sidebar
 function registerMenuHandlers() {
   document.querySelectorAll(".menu [data-route]").forEach((btn) => {
     btn.addEventListener("click", () => {
       navigate(btn.getAttribute("data-route"));
     });
   });
-  if (resetBtn) {
-    resetBtn.addEventListener("click", resetData);
-  }
 }
 
 // Đánh dấu menu đang hoạt động theo route hiện tại

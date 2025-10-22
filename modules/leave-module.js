@@ -1,38 +1,16 @@
+import { leaveAPI } from "../utils/api.js";
 import { validateEmployeeId, validateDateRange } from "../utils/validators.js";
 
 // Module quản lý nghỉ phép
-const LEAVES_STORAGE_KEY = "hrm_leaves";
 const DEFAULT_ANNUAL_LEAVE_DAYS = 20; // Số ngày phép mặc định mỗi năm
-const MILLISECONDS_PER_DAY = 86400000; // 1 ngày = 86,400,000 milliseconds
-const LEAVE_STATUS_PENDING = "pending";
-const LEAVE_STATUS_APPROVED = "approved";
 const LEAVE_TYPE_ANNUAL = "annual";
 const LEAVE_TYPE_SICK = "sick";
-
-// Đọc danh sách yêu cầu nghỉ phép đã lưu
-function readLeaveData() {
-  const rawData = localStorage.getItem(LEAVES_STORAGE_KEY);
-  return rawData ? JSON.parse(rawData) : [];
-}
-
-// Ghi lại danh sách yêu cầu nghỉ phép vào LocalStorage
-function saveLeaveData(leaveList) {
-  localStorage.setItem(LEAVES_STORAGE_KEY, JSON.stringify(leaveList));
-}
-
-// Tính tổng số ngày giữa hai mốc thời gian (bao gồm ngày bắt đầu và kết thúc)
-function calculateDaysDifference(startDate, endDate) {
-  const start = new Date(startDate);
-  const end = new Date(endDate);
-  const diffInMs = end - start;
-  return Math.ceil(diffInMs / MILLISECONDS_PER_DAY) + 1;
-}
 
 export const LeaveModule = {
   /**
    * Tạo yêu cầu nghỉ phép mới
    */
-  requestLeave(employeeId, startDate, endDate, leaveType) {
+  async requestLeave(employeeId, startDate, endDate, leaveType, reason = "") {
     if (!employeeId || !startDate || !endDate) {
       throw new Error("Thiếu dữ liệu");
     }
@@ -57,56 +35,37 @@ export const LeaveModule = {
       throw new Error(messages.join(", "));
     }
 
-    const leaveList = readLeaveData();
-    leaveList.push({
-      id: Date.now(),
-      employeeId,
-      startDate,
-      endDate,
+    await leaveAPI.create({
+      employee_id: employeeId,
       type: leaveType,
-      status: LEAVE_STATUS_PENDING,
+      start_date: startDate,
+      end_date: endDate,
     });
-    saveLeaveData(leaveList);
   },
 
   /**
    * Duyệt yêu cầu nghỉ phép
    */
-  approveLeave(leaveRequestId) {
-    const leaveList = readLeaveData();
-    const leaveIndex = leaveList.findIndex(
-      (leaveRequest) => leaveRequest.id === leaveRequestId
-    );
+  async approveLeave(leaveRequestId) {
+    await leaveAPI.approve(leaveRequestId);
+  },
 
-    if (leaveIndex === -1) {
-      throw new Error("Không tồn tại");
-    }
-
-    leaveList[leaveIndex].status = LEAVE_STATUS_APPROVED;
-    saveLeaveData(leaveList);
+  /**
+   * Từ chối yêu cầu nghỉ phép
+   */
+  async rejectLeave(leaveRequestId, reason = "") {
+    await leaveAPI.reject(leaveRequestId, reason);
   },
 
   /**
    * Tính số ngày phép còn lại của nhân viên
    */
-  getLeaveBalance(employeeId) {
-    const approvedLeaves = readLeaveData().filter(
-      (leaveRequest) =>
-        leaveRequest.employeeId === employeeId &&
-        leaveRequest.status === LEAVE_STATUS_APPROVED &&
-        leaveRequest.type === LEAVE_TYPE_ANNUAL
-    );
-
-    const usedDays = approvedLeaves.reduce(
-      (totalDays, leaveRequest) =>
-        totalDays +
-        calculateDaysDifference(leaveRequest.startDate, leaveRequest.endDate),
-      0
-    );
-
-    return Math.max(0, DEFAULT_ANNUAL_LEAVE_DAYS - usedDays);
+  async getLeaveBalance(employeeId) {
+    const result = await leaveAPI.getBalance(employeeId);
+    return result.balance;
   },
-  mount(viewEl, titleEl) {
+
+  async mount(viewEl, titleEl) {
     // Render màn hình quản lý nghỉ phép và gắn các event handler liên quan
     titleEl.textContent = "Nghỉ phép";
     viewEl.innerHTML = "";
@@ -129,14 +88,16 @@ export const LeaveModule = {
 
     const body = wrap.querySelector("#lvBody");
     // Render lại bảng yêu cầu nghỉ phép hiện thời
-    const render = () => {
-      const list = readLeaveData();
-      body.innerHTML = list
-        .map(
-          (leave) => `<tr>
-				<td>${leave.employeeId}</td>
-				<td>${leave.startDate} → ${leave.endDate}</td>
-				<td>${leave.type}</td>
+    const render = async () => {
+      try {
+        const result = await leaveAPI.getAll();
+        const list = result.data || [];
+        body.innerHTML = list
+          .map(
+            (leave) => `<tr>
+				<td>${leave.employee_name || leave.employee_id}</td>
+				<td>${leave.start_date} → ${leave.end_date}</td>
+				<td>${leave.type || "N/A"}</td>
 				<td>${leave.status}</td>
 				<td>${
           leave.status === "pending"
@@ -144,32 +105,39 @@ export const LeaveModule = {
             : ""
         }</td>
 			</tr>`
-        )
-        .join("");
+          )
+          .join("");
+      } catch (error) {
+        body.innerHTML = `<tr><td colspan="5" class="alert error">${error.message}</td></tr>`;
+      }
     };
-    render();
+    await render();
 
-    wrap.querySelector("#leaveForm").addEventListener("submit", (e) => {
+    wrap.querySelector("#leaveForm").addEventListener("submit", async (e) => {
       e.preventDefault();
       const id = Number(wrap.querySelector("#lvEmp").value);
       const s = wrap.querySelector("#lvStart").value;
       const en = wrap.querySelector("#lvEnd").value;
       const type = wrap.querySelector("#lvType").value;
       try {
-        this.requestLeave(id, s, en, type);
+        await this.requestLeave(id, s, en, type);
         e.target.reset();
-        render();
+        await render();
       } catch (err) {
         alert(err.message);
       }
     });
 
-    body.addEventListener("click", (e) => {
+    body.addEventListener("click", async (e) => {
       const t = e.target;
       if (t.matches("[data-approve]")) {
         const id = Number(t.getAttribute("data-approve"));
-        this.approveLeave(id);
-        render();
+        try {
+          await this.approveLeave(id);
+          await render();
+        } catch (error) {
+          alert(error.message);
+        }
       }
     });
   },

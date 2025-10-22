@@ -1,8 +1,9 @@
 import { EmployeeDb } from "./employee-db-module.js";
+import { departmentAPI } from "../utils/api.js";
 
 export const DepartmentModule = {
   // Render màn hình quản lý phòng ban và xử lý CRUD đơn giản
-  mount(viewEl, titleEl) {
+  async mount(viewEl, titleEl) {
     titleEl.textContent = "Phòng ban";
     viewEl.innerHTML = "";
     const wrap = document.createElement("div");
@@ -18,8 +19,8 @@ export const DepartmentModule = {
 
     const body = wrap.querySelector("#deptBody");
     // Render lại danh sách phòng ban từ cơ sở dữ liệu hiện tại
-    const render = () => {
-      const list = EmployeeDb.getAllDepartments();
+    const render = async () => {
+      const list = await EmployeeDb.getAllDepartments();
       body.innerHTML = list
         .map(
           (department) => `<tr>
@@ -32,47 +33,50 @@ export const DepartmentModule = {
         )
         .join("");
     };
-    render();
+    await render();
 
-    wrap.querySelector("#deptForm").addEventListener("submit", (e) => {
+    wrap.querySelector("#deptForm").addEventListener("submit", async (e) => {
       e.preventDefault();
       const name = wrap.querySelector("#deptName").value.trim();
       if (!name) return;
-      const list = EmployeeDb.getAllDepartments();
-      const existed = list.some(
-        (department) => department.name.toLowerCase() === name.toLowerCase()
-      );
-      if (existed) {
-        alert("Phòng ban đã tồn tại");
-        return;
+
+      try {
+        await departmentAPI.create({ name, manager_id: null });
+        wrap.querySelector("#deptForm").reset();
+        await render();
+      } catch (error) {
+        alert(error.message || "Có lỗi xảy ra");
       }
-      list.push({ id: Date.now(), name, managerId: null });
-      EmployeeDb.saveDepartments(list);
-      wrap.querySelector("#deptForm").reset();
-      render();
     });
 
-    body.addEventListener("click", (e) => {
+    body.addEventListener("click", async (e) => {
       const target = e.target;
       if (target.matches("[data-del]")) {
         const id = Number(target.getAttribute("data-del"));
         if (window.confirm("Xóa phòng ban?")) {
-          const list = EmployeeDb.getAllDepartments().filter(
-            (department) => department.id !== id
-          );
-          EmployeeDb.saveDepartments(list);
-          render();
+          try {
+            await departmentAPI.delete(id);
+            await render();
+          } catch (error) {
+            alert(error.message || "Có lỗi xảy ra");
+          }
         }
       }
       if (target.matches("[data-edit]")) {
         const id = Number(target.getAttribute("data-edit"));
-        const list = EmployeeDb.getAllDepartments();
-        const index = list.findIndex((department) => department.id === id);
-        const newName = prompt("Tên mới", list[index]?.name || "");
+        const list = await EmployeeDb.getAllDepartments();
+        const dept = list.find((department) => department.id === id);
+        const newName = prompt("Tên mới", dept?.name || "");
         if (newName) {
-          list[index].name = newName.trim();
-          EmployeeDb.saveDepartments(list);
-          render();
+          try {
+            await departmentAPI.update(id, {
+              name: newName.trim(),
+              manager_id: dept.manager_id,
+            });
+            await render();
+          } catch (error) {
+            alert(error.message || "Có lỗi xảy ra");
+          }
         }
       }
     });

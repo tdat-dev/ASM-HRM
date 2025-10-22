@@ -1,9 +1,10 @@
 import { EmployeeDb } from "./employee-db-module.js";
+import { employeeAPI } from "../utils/api.js";
 import { validateEmployeeId } from "../utils/validators.js";
 
 export const DeleteEmployeeModule = {
   // Render quy trình tìm và xóa nhân viên theo ID
-  mount(viewEl, titleEl) {
+  async mount(viewEl, titleEl) {
     titleEl.textContent = "Xóa Nhân viên";
     viewEl.innerHTML = "";
     const box = document.createElement("div");
@@ -18,32 +19,39 @@ export const DeleteEmployeeModule = {
 		`;
     viewEl.appendChild(box);
 
-    document.getElementById("delEmpForm").addEventListener("submit", (e) => {
-      e.preventDefault();
-      const id = Number(document.getElementById("delEmpId").value);
-      const emp = EmployeeDb.getEmployeeById(id);
-      const area = document.getElementById("delArea");
-      const { ok, errors } = validateEmployeeId(id);
-      if (!ok) {
-        area.innerHTML = `<div class="alert error">${errors.join(
-          "<br>"
-        )}</div>`;
-        return;
-      }
-      if (!emp) {
-        area.innerHTML = '<div class="alert error">Không tìm thấy</div>';
-        return;
-      }
-      area.innerHTML = `<p>Bạn có chắc muốn xóa: <strong>${emp.name}</strong>?</p><button id="confirmDel" class="primary">Xóa</button>`;
-      document.getElementById("confirmDel").addEventListener("click", () => {
-        if (window.confirm("Xác nhận xóa?")) {
-          const list = EmployeeDb.getAllEmployees().filter(
-            (employee) => employee.id !== emp.id
-          );
-          EmployeeDb.saveEmployees(list);
-          area.innerHTML = '<div class="alert success">Đã xóa</div>';
+    document
+      .getElementById("delEmpForm")
+      .addEventListener("submit", async (e) => {
+        e.preventDefault();
+        const id = Number(document.getElementById("delEmpId").value);
+        const emp = await EmployeeDb.getEmployeeById(id);
+        const area = document.getElementById("delArea");
+        const { ok, errors } = validateEmployeeId(id);
+        if (!ok) {
+          area.innerHTML = `<div class="alert error">${errors.join(
+            "<br>"
+          )}</div>`;
+          return;
         }
+        if (!emp) {
+          area.innerHTML = '<div class="alert error">Không tìm thấy</div>';
+          return;
+        }
+        area.innerHTML = `<p>Bạn có chắc muốn xóa: <strong>${emp.name}</strong>?</p><button id="confirmDel" class="primary">Xóa</button>`;
+        document
+          .getElementById("confirmDel")
+          .addEventListener("click", async () => {
+            if (window.confirm("Xác nhận xóa?")) {
+              try {
+                await employeeAPI.delete(emp.id);
+                area.innerHTML = '<div class="alert success">Đã xóa</div>';
+              } catch (error) {
+                area.innerHTML = `<div class="alert error">${
+                  error.message || "Có lỗi xảy ra"
+                }</div>`;
+              }
+            }
+          });
       });
-    });
   },
 };

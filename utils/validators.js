@@ -48,13 +48,14 @@ export function validateEmployeeId(employeeId) {
 }
 
 // Kiểm tra phòng ban tồn tại
-export function validateDepartmentExists(departmentId) {
+export async function validateDepartmentExists(departmentId) {
   const errors = [];
   const numericId = Number(departmentId);
   if (!Number.isInteger(numericId) || numericId <= 0) {
     errors.push("Phòng ban không hợp lệ");
   } else {
-    const exists = EmployeeDb.getAllDepartments().some(
+    const departments = await EmployeeDb.getAllDepartments();
+    const exists = departments.some(
       (department) => department.id === numericId
     );
     if (!exists) {
@@ -65,15 +66,14 @@ export function validateDepartmentExists(departmentId) {
 }
 
 // Kiểm tra vị trí tồn tại
-export function validatePositionExists(positionId) {
+export async function validatePositionExists(positionId) {
   const errors = [];
   const numericId = Number(positionId);
   if (!Number.isInteger(numericId) || numericId <= 0) {
     errors.push("Vị trí không hợp lệ");
   } else {
-    const exists = EmployeeDb.getAllPositions().some(
-      (position) => position.id === numericId
-    );
+    const positions = await EmployeeDb.getAllPositions();
+    const exists = positions.some((position) => position.id === numericId);
     if (!exists) {
       errors.push("Vị trí không tồn tại");
     }

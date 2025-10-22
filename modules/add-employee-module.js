@@ -1,4 +1,5 @@
 import { EmployeeDb } from "./employee-db-module.js";
+import { employeeAPI } from "../utils/api.js";
 import {
   validateEmployeeInput,
   validateDepartmentExists,
@@ -8,11 +9,13 @@ import { showAlert } from "../utils/dom.js";
 
 export const AddEmployeeModule = {
   // Render màn hình thêm nhân viên và xử lý logic tạo mới
-  mount(viewEl, titleEl) {
+  async mount(viewEl, titleEl) {
     titleEl.textContent = "Thêm Nhân viên";
     viewEl.innerHTML = "";
-    const departments = EmployeeDb.getAllDepartments();
-    const positions = EmployeeDb.getAllPositions();
+
+    const departments = await EmployeeDb.getAllDepartments();
+    const positions = await EmployeeDb.getAllPositions();
+
     const wrap = document.createElement("div");
     wrap.className = "card";
     wrap.innerHTML = `
@@ -59,7 +62,7 @@ export const AddEmployeeModule = {
 
     const form = document.getElementById("addEmpForm");
     const alertEl = document.getElementById("addAlert");
-    form.addEventListener("submit", (e) => {
+    form.addEventListener("submit", async (e) => {
       e.preventDefault();
       const name = document.getElementById("empName").value.trim();
       const departmentId = Number(document.getElementById("empDept").value);
@@ -72,13 +75,17 @@ export const AddEmployeeModule = {
       if (!ok) {
         validationMessages.push(...errors);
       }
-      const { ok: deptOk, errors: deptErrors } =
-        validateDepartmentExists(departmentId);
+
+      // AWAIT async validators
+      const { ok: deptOk, errors: deptErrors } = await validateDepartmentExists(
+        departmentId
+      );
       if (!deptOk) {
         validationMessages.push(...deptErrors);
       }
-      const { ok: posOk, errors: posErrors } =
-        validatePositionExists(positionId);
+      const { ok: posOk, errors: posErrors } = await validatePositionExists(
+        positionId
+      );
       if (!posOk) {
         validationMessages.push(...posErrors);
       }
@@ -88,21 +95,22 @@ export const AddEmployeeModule = {
         return;
       }
 
-      const list = EmployeeDb.getAllEmployees();
-      const id = Date.now();
-      list.push({
-        id,
-        name,
-        departmentId,
-        positionId,
-        salary,
-        bonus: 0,
-        deduction: 0,
-        hireDate,
-      });
-      EmployeeDb.saveEmployees(list);
-      showAlert(alertEl, "success", "Thêm nhân viên thành công");
-      form.reset();
+      try {
+        await employeeAPI.create({
+          name,
+          department_id: departmentId,
+          position_id: positionId,
+          salary,
+          bonus: 0,
+          deduction: 0,
+          hire_date: hireDate,
+        });
+
+        showAlert(alertEl, "success", "Thêm nhân viên thành công");
+        form.reset();
+      } catch (error) {
+        showAlert(alertEl, "error", error.message || "Có lỗi xảy ra");
+      }
     });
   },
 };

@@ -1,13 +1,14 @@
 import { EmployeeDb } from "./employee-db-module.js";
+import { employeeAPI } from "../utils/api.js";
 import { validateRangeNumber } from "../utils/validators.js";
 import { renderTable } from "../utils/dom.js";
 
 export const SearchEmployeeModule = {
   // Render công cụ lọc nhân viên theo regex tên, phòng ban và khoảng lương
-  mount(viewEl, titleEl) {
+  async mount(viewEl, titleEl) {
     titleEl.textContent = "Tìm kiếm Nhân viên";
     viewEl.innerHTML = "";
-    const departments = EmployeeDb.getAllDepartments();
+    const departments = await EmployeeDb.getAllDepartments();
     const box = document.createElement("div");
     box.className = "card";
     box.innerHTML = `
@@ -39,45 +40,62 @@ export const SearchEmployeeModule = {
       {
         header: "Phòng",
         cell: (row) =>
-          departments.find((department) => department.id === row.departmentId)
-            ?.name || "",
+          departments.find(
+            (department) => Number(department.id) === Number(row.department_id)
+          )?.name || "",
       },
-      { header: "Lương", cell: (row) => `${row.salary.toLocaleString()} VNĐ` },
+      {
+        header: "Lương",
+        cell: (row) => `${Number(row.salary).toLocaleString()} VNĐ`,
+      },
     ];
 
     // Tiện ích render bảng kết quả theo danh sách đầu vào
     const renderRows = (rows) => renderTable(tableWrap, columns, rows);
-    renderRows(EmployeeDb.getAllEmployees());
+    renderRows(await EmployeeDb.getAllEmployees());
 
-    document.getElementById("searchForm").addEventListener("submit", (e) => {
-      e.preventDefault();
-      const nameRe = document.getElementById("sName").value.trim();
-      const dept = document.getElementById("sDept").value;
-      const min = document.getElementById("sMin").value;
-      const max = document.getElementById("sMax").value;
+    document
+      .getElementById("searchForm")
+      .addEventListener("submit", async (e) => {
+        e.preventDefault();
+        const nameRe = document.getElementById("sName").value.trim();
+        const dept = document.getElementById("sDept").value;
+        const min = document.getElementById("sMin").value;
+        const max = document.getElementById("sMax").value;
 
-      const { ok, errors } = validateRangeNumber(
-        min || 0,
-        max || Number.MAX_SAFE_INTEGER
-      );
-      if (!ok) {
-        renderRows([]);
-        tableWrap.insertAdjacentHTML(
-          "beforeend",
-          `<div class="alert error">${errors.join("<br>")}</div>`
+        const { ok, errors } = validateRangeNumber(
+          min || 0,
+          max || Number.MAX_SAFE_INTEGER
         );
-        return;
-      }
-      const nmin = Number(min || 0);
-      const nmax = Number(max || Number.MAX_SAFE_INTEGER);
-      const regex = nameRe ? new RegExp(nameRe, "i") : null;
-      const rows = EmployeeDb.filterEmployees((emp) => {
-        const okName = regex ? regex.test(emp.name) : true;
-        const okDept = dept ? String(emp.departmentId) === dept : true;
-        const okSalary = emp.salary >= nmin && emp.salary <= nmax;
-        return okName && okDept && okSalary;
-      }).sort((a, b) => a.salary - b.salary);
-      renderRows(rows);
-    });
+        if (!ok) {
+          renderRows([]);
+          tableWrap.insertAdjacentHTML(
+            "beforeend",
+            `<div class="alert error">${errors.join("<br>")}</div>`
+          );
+          return;
+        }
+        const nmin = Number(min || 0);
+        const nmax = Number(max || Number.MAX_SAFE_INTEGER);
+        const regex = nameRe ? new RegExp(nameRe, "i") : null;
+
+        try {
+          const rows = await EmployeeDb.filterEmployees((emp) => {
+            const okName = regex ? regex.test(emp.name) : true;
+            const okDept = dept ? String(emp.department_id) === dept : true;
+            const salaryValue = Number(emp.salary);
+            const okSalary = salaryValue >= nmin && salaryValue <= nmax;
+            return okName && okDept && okSalary;
+          });
+          const sortedRows = rows.sort((a, b) => Number(a.id) - Number(b.id));
+          renderRows(sortedRows);
+        } catch (error) {
+          renderRows([]);
+          tableWrap.insertAdjacentHTML(
+            "beforeend",
+            `<div class="alert error">${error.message || "Có lỗi xảy ra"}</div>`
+          );
+        }
+      });
   },
 };

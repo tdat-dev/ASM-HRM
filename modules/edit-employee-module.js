@@ -1,4 +1,5 @@
 import { EmployeeDb } from "./employee-db-module.js";
+import { employeeAPI } from "../utils/api.js";
 import {
   validateEmployeeInput,
   validateDepartmentExists,
@@ -8,37 +9,47 @@ import { showAlert } from "../utils/dom.js";
 
 export const EditEmployeeModule = {
   // Render quy trình tìm nhân viên theo tên và cập nhật thông tin chi tiết
-  mount(viewEl, titleEl) {
+  async mount(viewEl, titleEl) {
     titleEl.textContent = "Sửa Nhân viên";
     viewEl.innerHTML = "";
     const box = document.createElement("div");
     box.className = "card";
     box.innerHTML = `
-			<form id="findEmpForm" style="margin-bottom:12px;">
-				<label>Tên nhân viên</label>
-				<input id="editEmpUsername" type="text" placeholder="Nhập Tên..." />
-				<button class="primary" type="submit">Tải</button>
-			</form>
+      <form id="findEmpForm" style="margin-bottom:12px;">
+        <label>Mã nhân viên</label>
+        <input id="editEmpCode" type="text" placeholder="Ví dụ: 1001" />
+        <button class="primary" type="submit">Tải</button>
+      </form>
 			<div id="editArea"></div>
 		`;
     viewEl.appendChild(box);
 
     const form = document.getElementById("findEmpForm");
-    form.addEventListener("submit", (e) => {
+    form.addEventListener("submit", async (e) => {
       e.preventDefault();
-      const username = document.getElementById("editEmpUsername").value.trim();
-      const allEmps = EmployeeDb.getAllEmployees();
-      const emp = allEmps.find(
-        (employee) =>
-          employee.name.toLowerCase().trim() === username.toLowerCase().trim()
-      );
+      const inputValue = document.getElementById("editEmpCode").value.trim();
       const area = document.getElementById("editArea");
+      if (!inputValue) {
+        area.innerHTML =
+          '<div class="alert error">Vui lòng nhập mã nhân viên</div>';
+        return;
+      }
+      const employeeId = Number(inputValue);
+      if (!Number.isFinite(employeeId)) {
+        area.innerHTML =
+          '<div class="alert error">Mã nhân viên không hợp lệ</div>';
+        return;
+      }
+      const allEmps = await EmployeeDb.getAllEmployees();
+      const emp = allEmps.find(
+        (employee) => Number(employee.id) === employeeId
+      );
       if (!emp) {
         area.innerHTML = '<div class="alert error">Không tìm thấy</div>';
         return;
       }
-      const departments = EmployeeDb.getAllDepartments();
-      const positions = EmployeeDb.getAllPositions();
+      const departments = await EmployeeDb.getAllDepartments();
+      const positions = await EmployeeDb.getAllPositions();
       area.innerHTML = `
 				<form id="editForm">
 					<div><label>Họ tên</label><input id="eName" value="${
@@ -49,7 +60,7 @@ export const EditEmployeeModule = {
               .map(
                 (department) =>
                   `<option ${
-                    department.id === emp.departmentId ? "selected" : ""
+                    department.id === emp.department_id ? "selected" : ""
                   } value="${department.id}">${department.name}</option>`
               )
               .join("")}</select>
@@ -59,7 +70,7 @@ export const EditEmployeeModule = {
               .map(
                 (position) =>
                   `<option ${
-                    position.id === emp.positionId ? "selected" : ""
+                    position.id === emp.position_id ? "selected" : ""
                   } value="${position.id}">${position.title}</option>`
               )
               .join("")}</select>
@@ -68,7 +79,7 @@ export const EditEmployeeModule = {
             emp.salary
           }" placeholder="Ví dụ: 10000000" required /></div>
 					<div><label>Ngày vào làm</label><input id="eHire" type="date" value="${
-            emp.hireDate
+            emp.hire_date
           }" required /></div>
 					<button class="primary">Lưu</button>
 					<div id="editAlert"></div>
@@ -76,28 +87,33 @@ export const EditEmployeeModule = {
 			`;
       const editForm = document.getElementById("editForm");
       const alertEl = document.getElementById("editAlert");
-      editForm.addEventListener("submit", (event) => {
+      editForm.addEventListener("submit", async (event) => {
         event.preventDefault();
         const updated = {
           name: document.getElementById("eName").value.trim(),
-          departmentId: Number(document.getElementById("eDept").value),
-          positionId: Number(document.getElementById("ePos").value),
+          department_id: Number(document.getElementById("eDept").value),
+          position_id: Number(document.getElementById("ePos").value),
           salary: Number(document.getElementById("eSalary").value),
-          hireDate: document.getElementById("eHire").value,
+          hire_date: document.getElementById("eHire").value,
         };
         const messages = [];
-        const { ok, errors } = validateEmployeeInput(updated);
+        const { ok, errors } = validateEmployeeInput({
+          name: updated.name,
+          salary: updated.salary,
+          hireDate: updated.hire_date,
+        });
         if (!ok) {
           messages.push(...errors);
         }
-        const { ok: deptOk, errors: deptErrors } = validateDepartmentExists(
-          updated.departmentId
-        );
+
+        // AWAIT async validators
+        const { ok: deptOk, errors: deptErrors } =
+          await validateDepartmentExists(updated.department_id);
         if (!deptOk) {
           messages.push(...deptErrors);
         }
-        const { ok: posOk, errors: posErrors } = validatePositionExists(
-          updated.positionId
+        const { ok: posOk, errors: posErrors } = await validatePositionExists(
+          updated.position_id
         );
         if (!posOk) {
           messages.push(...posErrors);
@@ -106,15 +122,13 @@ export const EditEmployeeModule = {
           showAlert(alertEl, "error", messages.join("<br>"));
           return;
         }
-        const list = EmployeeDb.getAllEmployees();
-        const index = list.findIndex((employee) => employee.id === emp.id);
-        if (index === -1) {
-          showAlert(alertEl, "error", "Lỗi dữ liệu");
-          return;
+
+        try {
+          await employeeAPI.update(emp.id, updated);
+          showAlert(alertEl, "success", "Đã lưu");
+        } catch (error) {
+          showAlert(alertEl, "error", error.message || "Có lỗi xảy ra");
         }
-        list[index] = { ...emp, ...updated };
-        EmployeeDb.saveEmployees(list);
-        showAlert(alertEl, "success", "Đã lưu");
       });
     });
   },

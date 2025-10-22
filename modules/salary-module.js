@@ -12,8 +12,9 @@ function calculateNetSalary(employee) {
 export const SalaryModule = {
   calculateNetSalary,
   // Tạo báo cáo bảng lương kèm lương thực lĩnh cho từng nhân viên
-  generatePayrollReport() {
-    return EmployeeDb.getAllEmployees().map((employee) => ({
+  async generatePayrollReport() {
+    const employees = await EmployeeDb.getAllEmployees();
+    return employees.map((employee) => ({
       id: employee.id,
       name: employee.name,
       salary: employee.salary,
@@ -22,7 +23,8 @@ export const SalaryModule = {
       net: calculateNetSalary(employee),
     }));
   },
-  mount(viewEl, titleEl) {
+
+  async mount(viewEl, titleEl) {
     // Render bảng lương với các cột định dạng số liệu
     titleEl.textContent = "Bảng lương";
     viewEl.innerHTML = "";
@@ -32,7 +34,7 @@ export const SalaryModule = {
     wrap.appendChild(table);
     viewEl.appendChild(wrap);
 
-    const rows = this.generatePayrollReport();
+    const rows = await this.generatePayrollReport();
     const columns = [
       {
         header: "Mã NV",

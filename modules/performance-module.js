@@ -1,20 +1,9 @@
+import { reviewAPI } from "../utils/api.js";
 import { validateEmployeeId, validateRating } from "../utils/validators.js";
-
-const REVIEWS_KEY = "hrm_reviews";
-
-// Đọc toàn bộ đánh giá hiệu suất từ LocalStorage
-function read() {
-  const raw = localStorage.getItem(REVIEWS_KEY);
-  return raw ? JSON.parse(raw) : [];
-}
-// Lưu danh sách đánh giá xuống LocalStorage
-function write(list) {
-  localStorage.setItem(REVIEWS_KEY, JSON.stringify(list));
-}
 
 export const PerformanceModule = {
   // Thêm đánh giá mới cho nhân viên với rating và feedback tương ứng
-  addReview(employeeId, rating, feedback) {
+  async addReview(employeeId, rating, feedback) {
     if (!employeeId || !rating) throw new Error("Thiếu dữ liệu");
     const messages = [];
     const { ok, errors } = validateEmployeeId(employeeId);
@@ -28,29 +17,21 @@ export const PerformanceModule = {
     if (messages.length > 0) {
       throw new Error(messages.join(", "));
     }
-    const list = read();
-    list.push({
-      id: Date.now(),
-      employeeId,
-      date: new Date().toISOString().slice(0, 10),
+
+    await reviewAPI.create({
+      employee_id: employeeId,
       rating: Number(rating),
       feedback: feedback || "",
     });
-    write(list);
   },
+
   // Tính điểm trung bình của một nhân viên (làm tròn hai chữ số thập phân)
-  getAverageRating(employeeId) {
-    const reviews = read().filter((review) => review.employeeId === employeeId);
-    if (reviews.length === 0) return 0;
-    return (
-      Math.round(
-        (reviews.reduce((sum, review) => sum + review.rating, 0) /
-          reviews.length) *
-          100
-      ) / 100
-    );
+  async getAverageRating(employeeId) {
+    const result = await reviewAPI.getAverage(employeeId);
+    return result.average || 0;
   },
-  mount(viewEl, titleEl) {
+
+  async mount(viewEl, titleEl) {
     // Render giao diện nhập đánh giá và bảng xếp hạng nhân viên
     titleEl.textContent = "Hiệu suất";
     viewEl.innerHTML = "";
@@ -72,42 +53,37 @@ export const PerformanceModule = {
 
     const body = wrap.querySelector("#rvBody");
     // Cập nhật bảng xếp hạng từ dữ liệu đánh giá hiện tại
-    const render = () => {
-      const grouped = read().reduce((accumulator, review) => {
-        accumulator[review.employeeId] = accumulator[review.employeeId] || [];
-        accumulator[review.employeeId].push(review);
-        return accumulator;
-      }, {});
-      const rows = Object.entries(grouped)
-        .map(([empId, reviews]) => ({
-          empId: Number(empId),
-          avg:
-            Math.round(
-              (reviews.reduce((sum, review) => sum + review.rating, 0) /
-                reviews.length) *
-                100
-            ) / 100,
-        }))
-        .sort((a, b) => b.avg - a.avg);
-      body.innerHTML = rows
-        .map((row) => `<tr><td>${row.empId}</td><td>${row.avg}</td></tr>`)
-        .join("");
+    const render = async () => {
+      try {
+        const result = await reviewAPI.getTopPerformers(10);
+        const rows = result.data || [];
+        body.innerHTML = rows
+          .map(
+            (row) =>
+              `<tr><td>${row.employee_id}</td><td>${Number(
+                row.avg_rating
+              ).toFixed(2)}</td></tr>`
+          )
+          .join("");
+      } catch (error) {
+        body.innerHTML = `<tr><td colspan="2" class="alert error">${error.message}</td></tr>`;
+      }
     };
-    render();
+    await render();
 
-    wrap.querySelector("#rvForm").addEventListener("submit", (e) => {
+    wrap.querySelector("#rvForm").addEventListener("submit", async (e) => {
       e.preventDefault();
       const id = Number(wrap.querySelector("#rvEmp").value);
       const rating = Number(wrap.querySelector("#rvRate").value);
       const fb = wrap.querySelector("#rvFb").value.trim();
       try {
-        this.addReview(id, rating, fb);
+        await this.addReview(id, rating, fb);
       } catch (err) {
         alert(err.message);
         return;
       }
       e.target.reset();
-      render();
+      await render();
     });
   },
 };
