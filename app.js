@@ -281,8 +281,8 @@ const routes = {
 // Gắn sự kiện cho menu sidebar
 function registerMenuHandlers() {
   document.querySelectorAll(".menu [data-route]").forEach((btn) => {
-    btn.addEventListener("click", () => {
-      navigate(btn.getAttribute("data-route"));
+    btn.addEventListener("click", async () => {
+      await navigate(btn.getAttribute("data-route"));
     });
   });
 }
@@ -295,7 +295,15 @@ function setActive(route) {
 }
 
 // Điều hướng SPA tới route, đồng thời kích hoạt hàm mount tương ứng
-function navigate(route) {
+async function navigate(route) {
+  // Kiểm tra session trước khi cho phép điều hướng
+  const session = await AuthModule.getSession();
+  if (!session) {
+    // Nếu chưa đăng nhập, hiển thị màn hình login
+    showAuth();
+    return;
+  }
+
   const fn = routes[route] || routes.dashboard;
   setActive(route);
   fn();
@@ -307,17 +315,22 @@ async function init() {
   AuthModule.ensureInitialized();
   EmployeeDb.ensureInitialized();
   registerMenuHandlers();
-  logoutBtn.addEventListener("click", () => {
-    AuthModule.logout();
+  logoutBtn.addEventListener("click", async () => {
+    await AuthModule.logout();
     showAuth();
   });
-  const session = AuthModule.getSession();
-  if (!session) {
-    showAuth();
-    return;
+
+  // Mặc định hiển thị màn hình login trước
+  showAuth();
+
+  // Kiểm tra session (AWAIT để đợi kết quả)
+  const session = await AuthModule.getSession();
+  if (session) {
+    // Nếu đã đăng nhập, hiển thị app
+    showApp();
+    await navigate("dashboard");
   }
-  showApp();
-  navigate("dashboard");
+  // Nếu chưa đăng nhập, giữ nguyên màn hình login
 }
 
 // Hiển thị màn hình đăng nhập và xử lý form auth
@@ -368,7 +381,7 @@ function showAuth() {
     try {
       await AuthModule.login(username, password);
       showApp();
-      navigate("dashboard");
+      await navigate("dashboard");
     } catch (err) {
       alertEl.innerHTML = `<div class="alert error">${err.message}</div>`;
     }
