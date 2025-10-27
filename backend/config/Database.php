@@ -18,6 +18,9 @@ class Database {
      * Private constructor để implement Singleton pattern
      */
     private function __construct() {
+        // Load thông tin từ file .env
+        $this->loadEnv();
+        
         // Tự động phát hiện môi trường
         $this->detectEnvironment();
         
@@ -39,6 +42,37 @@ class Database {
     }
     
     /**
+     * Load environment variables từ file .env
+     */
+    private function loadEnv() {
+        $envFile = __DIR__ . '/../../.env';
+        
+        if (!file_exists($envFile)) {
+            return; // Nếu không có file .env, sẽ dùng detectEnvironment
+        }
+        
+        $lines = file($envFile, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
+        foreach ($lines as $line) {
+            // Bỏ qua comment
+            if (strpos(trim($line), '#') === 0) {
+                continue;
+            }
+            
+            // Parse key=value
+            if (strpos($line, '=') !== false) {
+                list($key, $value) = explode('=', $line, 2);
+                $key = trim($key);
+                $value = trim($value);
+                
+                // Set vào $_ENV
+                if (!array_key_exists($key, $_ENV)) {
+                    $_ENV[$key] = $value;
+                }
+            }
+        }
+    }
+    
+    /**
      * Tự động phát hiện môi trường và set thông tin database
      */
     private function detectEnvironment() {
@@ -46,18 +80,29 @@ class Database {
         $isLocalhost = in_array($_SERVER['HTTP_HOST'] ?? '', ['localhost', '127.0.0.1', 'localhost:8000']);
         
         if ($isLocalhost) {
-            // Cấu hình cho localhost
-            $this->host = 'localhost';
-            $this->dbname = 'hrm_db';
-            $this->username = 'root';
-            $this->password = '';
+            // Cấu hình cho localhost - Đọc từ .env
+            $this->host = $_ENV['DB_HOST_LOCAL'] ?? 'localhost';
+            $this->dbname = $_ENV['DB_NAME_LOCAL'] ?? 'hrm_db';
+            $this->username = $_ENV['DB_USER_LOCAL'] ?? 'root';
+            $this->password = $_ENV['DB_PASS_LOCAL'] ?? '';
         } else {
-            // Cấu hình cho hosting - THAY ĐỔI THÔNG TIN NÀY
-            $this->host = 'sql310.infinityfree.com';  // Thay bằng host của bạn
-            $this->dbname = 'if0_40226758_hrm';       // Thay bằng tên database của bạn
-            $this->username = 'if0_40226758';          // Thay bằng username của bạn
-            $this->password = 'YOUR_PASSWORD_HERE';    // Thay bằng password của bạn
+            // Cấu hình cho hosting - Đọc từ .env (BẮT BUỘC phải có file .env)
+            $this->host = $_ENV['DB_HOST_PROD'] ?? null;
+            $this->dbname = $_ENV['DB_NAME_PROD'] ?? null;
+            $this->username = $_ENV['DB_USER_PROD'] ?? null;
+            $this->password = $_ENV['DB_PASS_PROD'] ?? null;
+            
+            // Kiểm tra nếu thiếu thông tin
+            if (!$this->host || !$this->dbname || !$this->username) {
+                die(json_encode([
+                    'success' => false,
+                    'message' => 'Thiếu thông tin database trong file .env. Vui lòng tạo file .env từ .env.example'
+                ]));
+            }
         }
+        
+        // Charset từ .env hoặc mặc định
+        $this->charset = $_ENV['DB_CHARSET'] ?? 'utf8mb4';
     }
     
     /**

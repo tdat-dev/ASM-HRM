@@ -1,0 +1,52 @@
+name: Deploy to Hosting
+
+# Tự động chạy khi push vào branch main
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    name: Deploy to Web Hosting
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Create .env file
+        run: |
+          cat > .env << EOF
+          # Database Configuration - LOCALHOST
+          DB_HOST_LOCAL=localhost
+          DB_NAME_LOCAL=hrm_db
+          DB_USER_LOCAL=root
+          DB_PASS_LOCAL=
+
+          # Database Configuration - HOSTING
+          DB_HOST_PROD=${{ secrets.DB_HOST_PROD }}
+          DB_NAME_PROD=${{ secrets.DB_NAME_PROD }}
+          DB_USER_PROD=${{ secrets.DB_USER_PROD }}
+          DB_PASS_PROD=${{ secrets.DB_PASS_PROD }}
+
+          # Charset
+          DB_CHARSET=utf8mb4
+          EOF
+
+      - name: Deploy via FTP
+        uses: SamKirkland/FTP-Deploy-Action@4.3.3
+        with:
+          server: ${{ secrets.FTP_SERVER }}
+          username: ${{ secrets.FTP_USERNAME }}
+          password: ${{ secrets.FTP_PASSWORD }}
+          server-dir: /htdocs/
+          # Loại trừ các file không cần deploy
+          exclude: |
+            **/.git*
+            **/.git*/**
+            **/node_modules/**
+            **/.vscode/**
+            **/.env.example
+            **/README.md
+            **/docs/**
