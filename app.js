@@ -16,8 +16,11 @@ const pageTitleEl = document.getElementById("pageTitle");
 const logoutBtn = document.getElementById("logoutBtn");
 const appEl = document.getElementById("app");
 const themeToggleBtn = document.getElementById("themeToggle");
+const sidebarToggleBtn = document.getElementById("sidebarToggle");
+const sidebar = document.querySelector(".sidebar");
 
 const THEME_KEY = "hrm_theme";
+const SIDEBAR_KEY = "hrm_sidebar_collapsed";
 
 // Áp dụng theme sáng/tối bằng cách thêm class vào document
 function applyTheme(theme) {
@@ -28,6 +31,21 @@ function applyTheme(theme) {
     root.classList.remove("theme-dark");
   }
   localStorage.setItem(THEME_KEY, theme);
+}
+
+// Toggle sidebar collapsed/expanded
+function toggleSidebar() {
+  sidebar.classList.toggle("collapsed");
+  const isCollapsed = sidebar.classList.contains("collapsed");
+  localStorage.setItem(SIDEBAR_KEY, isCollapsed);
+}
+
+// Load sidebar state
+function loadSidebarState() {
+  const isCollapsed = localStorage.getItem(SIDEBAR_KEY) === "true";
+  if (isCollapsed) {
+    sidebar.classList.add("collapsed");
+  }
 }
 
 // Khởi động cơ chế theme: đọc lựa chọn trước đó hoặc theo hệ thống
@@ -47,6 +65,12 @@ function initTheme() {
       applyTheme(next);
       themeToggleBtn.textContent = next === "dark" ? "Light Mode" : "Dark Mode";
     });
+  }
+
+  // Sidebar toggle
+  loadSidebarState();
+  if (sidebarToggleBtn) {
+    sidebarToggleBtn.addEventListener("click", toggleSidebar);
   }
 }
 
