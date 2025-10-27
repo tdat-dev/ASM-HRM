@@ -6,16 +6,13 @@
 const API_BASE_URL = (() => {
   const hostname = window.location.hostname;
 
-  // Production (InfinityFree hoặc hosting khác)
-  if (
-    hostname.includes("infinityfree.me") ||
-    hostname.includes("infinityfree.com")
-  ) {
-    return "https://humanmanager.infinityfree.me/backend/api.php";
+  // Localhost development
+  if (hostname === "localhost" || hostname === "127.0.0.1") {
+    return "http://localhost/ASM-HRM/backend/api.php";
   }
 
-  // Localhost development
-  return "http://localhost/ASM-HRM/backend/api.php";
+  // Production - Tự động dùng domain hiện tại
+  return `${window.location.origin}/backend/api.php`;
 })();
 
 /**

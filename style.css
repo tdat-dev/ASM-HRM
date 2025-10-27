@@ -223,10 +223,11 @@ body {
   display: flex;
   flex-direction: column;
   gap: 8px;
-  padding: 0 12px 12px;
+  padding: 0 12px;
   flex: 1; /* Chiếm phần còn lại */
   overflow-y: auto; /* Scroll riêng cho menu items */
   overflow-x: hidden;
+  min-height: 0; /* Fix flex overflow issue */
 }
 
 /* Custom scrollbar cho menu */
@@ -248,7 +249,12 @@ body {
 }
 
 .menu-section {
-  margin-bottom: 12px;
+  margin-bottom: 8px; /* Giảm khoảng cách để tiết kiệm không gian */
+  flex-shrink: 0; /* Không co lại */
+}
+
+.menu-section:last-of-type {
+  margin-bottom: 0; /* Không có margin cho section cuối */
 }
 
 .menu-section-title {
@@ -381,9 +387,11 @@ body {
 /* Logout Button */
 .logout {
   margin-top: auto;
+  margin-bottom: 12px; /* Khoảng cách với đáy sidebar */
   background: rgba(239, 68, 68, 0.1) !important;
   color: #ef4444 !important;
   border: 1px solid rgba(239, 68, 68, 0.3);
+  flex-shrink: 0; /* Không co lại */
 }
 
 .logout:hover {
