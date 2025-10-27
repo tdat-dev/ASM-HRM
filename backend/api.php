@@ -1,7 +1,42 @@
 <?php
 // Bật hiển thị lỗi cho môi trường phát triển
 error_reporting(E_ALL);
-ini_set('display_errors', 1);
+ini_set('display_errors', 0); // Tắt display_errors để không in HTML ra output
+ini_set('log_errors', 1); // Log lỗi vào error log thay vì hiển thị
+
+// CORS Headers - Cho phép cross-origin requests
+$allowedOrigins = [
+    'http://localhost:5500',
+    'http://127.0.0.1:5500',
+    'http://localhost',
+    'http://127.0.0.1',
+];
+
+// Lấy origin của request
+$origin = $_SERVER['HTTP_ORIGIN'] ?? '';
+
+// Nếu là localhost hoặc 127.0.0.1, cho phép
+if (strpos($origin, 'localhost') !== false || strpos($origin, '127.0.0.1') !== false) {
+    header("Access-Control-Allow-Origin: $origin");
+} 
+// Nếu là hosting (cùng domain), cho phép
+elseif (strpos($origin, $_SERVER['HTTP_HOST']) !== false) {
+    header("Access-Control-Allow-Origin: $origin");
+}
+// Nếu không có origin (same-origin request), cho phép
+elseif (empty($origin)) {
+    header("Access-Control-Allow-Origin: *");
+}
+
+header("Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS");
+header("Access-Control-Allow-Headers: Content-Type, Authorization");
+header("Access-Control-Allow-Credentials: true");
+
+// Xử lý preflight request (OPTIONS)
+if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
+    http_response_code(200);
+    exit();
+}
 
 // Set content type
 header("Content-Type: application/json; charset=UTF-8");
