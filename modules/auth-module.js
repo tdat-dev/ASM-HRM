@@ -26,6 +26,14 @@ export const AuthModule = {
    */
   async login(username, password) {
     const result = await authAPI.login(username, password);
+    // Lưu session tạm thời trên client để UI có thể dùng ngay (server vẫn là nguồn truth)
+    if (result && result.data) {
+      try {
+        localStorage.setItem("hrm_session", JSON.stringify(result.data));
+      } catch (e) {
+        // ignore storage errors
+      }
+    }
     return result;
   },
 
@@ -34,6 +42,9 @@ export const AuthModule = {
    */
   async logout() {
     const result = await authAPI.logout();
+    try {
+      localStorage.removeItem("hrm_session");
+    } catch (e) {}
     return result;
   },
 
@@ -43,9 +54,21 @@ export const AuthModule = {
   async getSession() {
     try {
       const result = await authAPI.getSession();
-      return result.data;
-    } catch (error) {
+      if (result && result.data) {
+        try {
+          localStorage.setItem("hrm_session", JSON.stringify(result.data));
+        } catch (e) {}
+        return result.data;
+      }
       return null;
+    } catch (error) {
+      // Fallback: nếu server không phản hồi, dùng localStorage nếu có
+      try {
+        const s = localStorage.getItem("hrm_session");
+        return s ? JSON.parse(s) : null;
+      } catch (e) {
+        return null;
+      }
     }
   },
 };

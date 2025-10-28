@@ -341,49 +341,311 @@ function showAuth() {
   const container = document.createElement("div");
   container.className = "card auth-container";
   container.innerHTML = `
-    <h1>Chào mừng trở lại 👋</h1>
-    <p>Đăng nhập để truy cập hệ thống HRM</p>
-    <form id="loginForm">
-      <div>
-        <label>Tên đăng nhập</label>
-        <input id="username" required />
+    <h1>Chào mừng 👋</h1>
+    <p id="authSubtitle">Đăng nhập để truy cập hệ thống HRM</p>
+
+    <div class="auth-tabs">
+      <button id="showLogin" class="primary">
+        <i class="fas fa-sign-in-alt"></i> Đăng nhập
+      </button>
+      <button id="showRegister" class="secondary">
+        <i class="fas fa-user-plus"></i> Đăng ký
+      </button>
+    </div>
+
+    <form id="authForm" autocomplete="off">
+      <div id="field-username" class="auth-field">
+        <label>
+          <i class="fas fa-user"></i> Tên đăng nhập
+          <span class="required">*</span>
+        </label>
+        <input 
+          id="username" 
+          type="text"
+          autocomplete="username"
+          placeholder="Nhập tên đăng nhập"
+          required 
+        />
+        <div id="username-helper" class="auth-helper"></div>
       </div>
-      <div>
-        <label>Mật khẩu</label>
-        <input id="password" type="password" required />
+
+      <div id="field-password" class="auth-field">
+        <label>
+          <i class="fas fa-lock"></i> Mật khẩu
+          <span class="required">*</span>
+        </label>
+        <input 
+          id="password" 
+          type="password"
+          autocomplete="current-password"
+          placeholder="Nhập mật khẩu"
+          required 
+        />
+        <div id="password-strength" class="password-strength" style="display:none;">
+          <div class="password-strength-bar"></div>
+        </div>
+        <div id="password-helper" class="auth-helper"></div>
       </div>
-      <div style="display:flex; gap:8px;">
-        <button type="submit" class="primary">Đăng nhập</button>
-        <button type="button" id="registerBtn" class="secondary">Đăng ký nhanh</button>
+
+      <div id="field-confirm" class="auth-field hidden">
+        <label>
+          <i class="fas fa-lock"></i> Xác nhận mật khẩu
+          <span class="required">*</span>
+        </label>
+        <input 
+          id="passwordConfirm" 
+          type="password"
+          autocomplete="new-password"
+          placeholder="Nhập lại mật khẩu"
+        />
+        <div id="confirm-helper" class="auth-helper"></div>
       </div>
-      <div id="loginAlert"></div>
+
+      <div class="auth-actions">
+        <button type="submit" id="authSubmit" class="primary">
+          <i class="fas fa-sign-in-alt"></i> Đăng nhập
+        </button>
+        <button type="button" id="authCancel" class="secondary" style="display:none;">
+          <i class="fas fa-times"></i> Hủy
+        </button>
+      </div>
+
+      <div id="loginAlert" class="auth-alert"></div>
     </form>
   `;
   viewEl.appendChild(container);
 
-  const form = document.getElementById("loginForm");
+  // Elements
+  const form = document.getElementById("authForm");
   const alertEl = document.getElementById("loginAlert");
-  document.getElementById("registerBtn").addEventListener("click", async () => {
-    const username = document.getElementById("username").value.trim();
-    const password = document.getElementById("password").value;
-    try {
-      await AuthModule.register(username, password);
-      alertEl.innerHTML =
-        '<div class="alert success">Đăng ký thành công. Hãy đăng nhập.</div>';
-    } catch (err) {
-      alertEl.innerHTML = `<div class="alert error">${err.message}</div>`;
+  const showLoginBtn = document.getElementById("showLogin");
+  const showRegisterBtn = document.getElementById("showRegister");
+  const fieldConfirm = document.getElementById("field-confirm");
+  const authSubmit = document.getElementById("authSubmit");
+  const authCancel = document.getElementById("authCancel");
+  const authSubtitle = document.getElementById("authSubtitle");
+  const passwordInput = document.getElementById("password");
+  const passwordConfirmInput = document.getElementById("passwordConfirm");
+  const usernameHelper = document.getElementById("username-helper");
+  const passwordHelper = document.getElementById("password-helper");
+  const confirmHelper = document.getElementById("confirm-helper");
+  const passwordStrength = document.getElementById("password-strength");
+  const passwordStrengthBar = passwordStrength.querySelector(
+    ".password-strength-bar"
+  );
+
+  // Mode: 'login' or 'register'
+  let mode = "login";
+
+  // Password strength checker
+  function checkPasswordStrength(password) {
+    if (!password) return { strength: "", score: 0 };
+
+    let score = 0;
+    if (password.length >= 8) score++;
+    if (password.length >= 12) score++;
+    if (/[a-z]/.test(password) && /[A-Z]/.test(password)) score++;
+    if (/\d/.test(password)) score++;
+    if (/[^a-zA-Z\d]/.test(password)) score++;
+
+    if (score <= 2) return { strength: "weak", score, text: "Yếu" };
+    if (score <= 3) return { strength: "medium", score, text: "Trung bình" };
+    return { strength: "strong", score, text: "Mạnh" };
+  }
+
+  // Real-time password validation
+  passwordInput.addEventListener("input", () => {
+    const password = passwordInput.value;
+
+    if (mode === "register" && password) {
+      passwordStrength.style.display = "block";
+      const result = checkPasswordStrength(password);
+      passwordStrengthBar.className = `password-strength-bar ${result.strength}`;
+
+      if (password.length < 8) {
+        passwordHelper.textContent = "⚠️ Mật khẩu phải có ít nhất 8 ký tự";
+        passwordHelper.className = "auth-helper error";
+      } else {
+        passwordHelper.textContent = `✓ Độ mạnh: ${result.text}`;
+        passwordHelper.className = "auth-helper success";
+      }
+    } else {
+      passwordStrength.style.display = "none";
+      passwordHelper.textContent = "";
+    }
+
+    // Check confirm match
+    if (passwordConfirmInput.value) {
+      validatePasswordMatch();
     }
   });
+
+  // Real-time confirm password validation
+  passwordConfirmInput.addEventListener("input", validatePasswordMatch);
+
+  function validatePasswordMatch() {
+    const password = passwordInput.value;
+    const confirm = passwordConfirmInput.value;
+
+    if (!confirm) {
+      confirmHelper.textContent = "";
+      return;
+    }
+
+    if (password === confirm) {
+      confirmHelper.textContent = "✓ Mật khẩu khớp";
+      confirmHelper.className = "auth-helper success";
+    } else {
+      confirmHelper.textContent = "✗ Mật khẩu không khớp";
+      confirmHelper.className = "auth-helper error";
+    }
+  }
+
+  // Username validation
+  document.getElementById("username").addEventListener("input", (e) => {
+    const username = e.target.value.trim();
+    if (username && username.length < 3) {
+      usernameHelper.textContent = "⚠️ Tên đăng nhập phải có ít nhất 3 ký tự";
+      usernameHelper.className = "auth-helper error";
+    } else if (username) {
+      usernameHelper.textContent = "✓ Hợp lệ";
+      usernameHelper.className = "auth-helper success";
+    } else {
+      usernameHelper.textContent = "";
+    }
+  });
+
+  function setMode(m) {
+    mode = m;
+    alertEl.innerHTML = "";
+    passwordHelper.textContent = "";
+    confirmHelper.textContent = "";
+    usernameHelper.textContent = "";
+    passwordStrength.style.display = "none";
+
+    if (mode === "login") {
+      fieldConfirm.classList.add("hidden");
+      authSubmit.innerHTML = '<i class="fas fa-sign-in-alt"></i> Đăng nhập';
+      authCancel.style.display = "none";
+      authSubtitle.textContent = "Đăng nhập để truy cập hệ thống HRM";
+      passwordInput.setAttribute("autocomplete", "current-password");
+      showLoginBtn.classList.add("primary");
+      showLoginBtn.classList.remove("secondary");
+      showRegisterBtn.classList.add("secondary");
+      showRegisterBtn.classList.remove("primary");
+    } else {
+      fieldConfirm.classList.remove("hidden");
+      authSubmit.innerHTML = '<i class="fas fa-user-plus"></i> Đăng ký';
+      authCancel.style.display = "inline-block";
+      authSubtitle.textContent = "Tạo tài khoản mới • Miễn phí";
+      passwordInput.setAttribute("autocomplete", "new-password");
+      showRegisterBtn.classList.add("primary");
+      showRegisterBtn.classList.remove("secondary");
+      showLoginBtn.classList.add("secondary");
+      showLoginBtn.classList.remove("primary");
+    }
+  }
+
+  showLoginBtn.addEventListener("click", () => setMode("login"));
+  showRegisterBtn.addEventListener("click", () => setMode("register"));
+  authCancel.addEventListener("click", () => setMode("login"));
+
+  // Initialize
+  setMode("login");
+
+  // Form submit handler (both login and register)
   form.addEventListener("submit", async (e) => {
     e.preventDefault();
     const username = document.getElementById("username").value.trim();
     const password = document.getElementById("password").value;
+    const passwordConfirm = document.getElementById("passwordConfirm").value;
+
+    // Clear previous alerts
+    alertEl.innerHTML = "";
+
+    // Enhanced validation
+    if (!username || !password) {
+      alertEl.innerHTML =
+        '<div class="alert error"><i class="fas fa-exclamation-triangle"></i> Vui lòng nhập đủ thông tin bắt buộc</div>';
+      return;
+    }
+
+    if (username.length < 3) {
+      alertEl.innerHTML =
+        '<div class="alert error"><i class="fas fa-exclamation-triangle"></i> Tên đăng nhập phải có ít nhất 3 ký tự</div>';
+      return;
+    }
+
+    if (mode === "register") {
+      if (password.length < 8) {
+        alertEl.innerHTML =
+          '<div class="alert error"><i class="fas fa-exclamation-triangle"></i> Mật khẩu phải có ít nhất 8 ký tự</div>';
+        return;
+      }
+
+      const strength = checkPasswordStrength(password);
+      if (strength.score < 2) {
+        alertEl.innerHTML =
+          '<div class="alert warning"><i class="fas fa-shield-alt"></i> Mật khẩu quá yếu. Vui lòng sử dụng mật khẩu mạnh hơn</div>';
+        return;
+      }
+
+      if (password !== passwordConfirm) {
+        alertEl.innerHTML =
+          '<div class="alert error"><i class="fas fa-exclamation-triangle"></i> Mật khẩu xác nhận không khớp</div>';
+        return;
+      }
+
+      // Disable submit button and show loading
+      authSubmit.disabled = true;
+      authSubmit.classList.add("loading");
+      const originalText = authSubmit.innerHTML;
+      authSubmit.innerHTML =
+        '<i class="fas fa-spinner fa-spin"></i> Đang đăng ký...';
+
+      try {
+        await AuthModule.register(username, password);
+        alertEl.innerHTML =
+          '<div class="alert success"><i class="fas fa-check-circle"></i> Đăng ký thành công! Bạn có thể đăng nhập ngay.</div>';
+
+        // Auto switch to login after 2 seconds
+        setTimeout(() => {
+          setMode("login");
+          document.getElementById("username").value = username;
+          document.getElementById("password").focus();
+        }, 2000);
+      } catch (err) {
+        alertEl.innerHTML = `<div class="alert error"><i class="fas fa-times-circle"></i> ${err.message}</div>`;
+      } finally {
+        authSubmit.disabled = false;
+        authSubmit.classList.remove("loading");
+        authSubmit.innerHTML = originalText;
+      }
+      return;
+    }
+
+    // Login flow
+    authSubmit.disabled = true;
+    authSubmit.classList.add("loading");
+    const originalText = authSubmit.innerHTML;
+    authSubmit.innerHTML =
+      '<i class="fas fa-spinner fa-spin"></i> Đang đăng nhập...';
+
     try {
       await AuthModule.login(username, password);
-      showApp();
-      await navigate("dashboard");
+      alertEl.innerHTML =
+        '<div class="alert success"><i class="fas fa-check-circle"></i> Đăng nhập thành công! Đang chuyển hướng...</div>';
+
+      // Short delay for UX
+      setTimeout(async () => {
+        showApp();
+        await navigate("dashboard");
+      }, 500);
     } catch (err) {
-      alertEl.innerHTML = `<div class="alert error">${err.message}</div>`;
+      alertEl.innerHTML = `<div class="alert error"><i class="fas fa-times-circle"></i> ${err.message}</div>`;
+      authSubmit.disabled = false;
+      authSubmit.classList.remove("loading");
+      authSubmit.innerHTML = originalText;
     }
   });
 }
