@@ -25,14 +25,14 @@ jobs:
           echo "files<<EOF" >> $GITHUB_OUTPUT
           git diff --name-only HEAD^1 HEAD | grep -E '\.(js|php|css|html)$' || echo ""
           echo "EOF" >> $GITHUB_OUTPUT
-          
+
           count=$(git diff --name-only HEAD^1 HEAD | grep -E '\.(js|php|css|html)$' | wc -l)
           echo "count=$count" >> $GITHUB_OUTPUT
 
       - name: Setup Node.js
         uses: actions/setup-node@v3
         with:
-          node-version: '18'
+          node-version: "18"
 
       - name: Install dependencies
         run: npm install @google/generative-ai
@@ -49,7 +49,7 @@ jobs:
 
           async function reviewCode() {
             const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-            const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash-exp" });
+            const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
 
             // Get changed files
             const changedFiles = execSync('git diff --name-only HEAD^1 HEAD')
@@ -76,7 +76,7 @@ jobs:
                 const prompt = `Bạn là senior developer review code.
 
           File: ${file}
-          
+
           Diff:
           \`\`\`
           ${diff}
@@ -133,10 +133,10 @@ jobs:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
             const fs = require('fs');
-            
+
             let reviewBody = '## 🤖 Gemini Code Review\n\n';
             reviewBody += '⚠️ Không thể load review. Kiểm tra logs để xem chi tiết.\n';
-            
+
             try {
               if (fs.existsSync('review-output.md')) {
                 reviewBody = fs.readFileSync('review-output.md', 'utf8');
