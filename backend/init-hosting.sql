@@ -121,30 +121,36 @@ FOREIGN KEY (manager_id) REFERENCES employees(id) ON DELETE SET NULL;
 -- ================================================
 
 -- User mặc định
-INSERT IGNORE INTO users (username, password) VALUES 
-('admin', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi'); -- password: password
+-- Username: admin
+-- Password: 123456
+INSERT INTO users (username, password) VALUES 
+('admin', '$2y$10$eXVqZ8jF7.nY2nKjXxWxZuqh1qH4RdJ5YVN/8VzqJhXtJYNLKXxGy')
+ON DUPLICATE KEY UPDATE username = username;
 
 -- Phòng ban mẫu
-INSERT IGNORE INTO departments (name) VALUES 
+INSERT INTO departments (name) VALUES 
 ('IT'),
 ('HR'),
 ('Finance'),
 ('Marketing'),
-('Sales');
+('Sales')
+ON DUPLICATE KEY UPDATE name = VALUES(name);
 
 -- Vị trí mẫu
-INSERT IGNORE INTO positions (title, description) VALUES 
+INSERT INTO positions (title, description) VALUES 
 ('Developer', 'Software Developer'),
 ('Manager', 'Department Manager'),
 ('HR Specialist', 'Human Resources Specialist'),
 ('Accountant', 'Financial Accountant'),
 ('Marketing Executive', 'Marketing Professional'),
-('Sales Representative', 'Sales Professional');
+('Sales Representative', 'Sales Professional')
+ON DUPLICATE KEY UPDATE title = VALUES(title);
 
 -- Nhân viên mẫu
-INSERT IGNORE INTO employees (name, department_id, position_id, salary, phone, email, hire_date) VALUES 
+INSERT INTO employees (name, department_id, position_id, salary, phone, email, hire_date) VALUES 
 ('Nguyễn Văn A', 1, 1, 15000000, '0901234567', 'nguyenvana@example.com', '2023-01-15'),
 ('Trần Thị B', 2, 3, 12000000, '0912345678', 'tranthib@example.com', '2023-02-20'),
 ('Lê Văn C', 3, 4, 13000000, '0923456789', 'levanc@example.com', '2023-03-10'),
 ('Phạm Thị D', 4, 5, 11000000, '0934567890', 'phamthid@example.com', '2023-04-05'),
-('Hoàng Văn E', 5, 6, 14000000, '0945678901', 'hoangvane@example.com', '2023-05-12');
+('Hoàng Văn E', 5, 6, 14000000, '0945678901', 'hoangvane@example.com', '2023-05-12')
+ON DUPLICATE KEY UPDATE name = VALUES(name);
