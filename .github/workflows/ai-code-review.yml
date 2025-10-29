@@ -107,7 +107,7 @@ jobs:
 
             // Write review to file
             let fullReview = `## 🤖 Gemini Code Review\n\n`;
-            fullReview += `**Model:** gemini-2.0-flash-exp\n`;
+            fullReview += `**Model:** gemini-2.5-flash\n`;
             fullReview += `**Files reviewed:** ${changedFiles.length}\n\n`;
 
             if (reviewComments.length === 0) {
