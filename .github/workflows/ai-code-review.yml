@@ -53,7 +53,7 @@ jobs:
               }
 
               const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-              const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash-exp" });
+              const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
 
               const baseSha = process.env.BASE_SHA;
               const headSha = process.env.HEAD_SHA;
@@ -136,7 +136,7 @@ jobs:
 
               // Generate review output
               let fullReview = `## 🤖 Gemini Code Review\n\n`;
-              fullReview += `**Model:** gemini-2.0-flash-exp (FREE)\n`;
+              fullReview += `**Model:** gemini-2.5-flash (FREE)\n`;
               fullReview += `**Files reviewed:** ${changedFiles.length}\n`;
               fullReview += `**Date:** ${new Date().toISOString()}\n\n`;
               fullReview += `---\n\n`;
