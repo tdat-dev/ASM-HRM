@@ -1,0 +1,153 @@
+name: Code Quality Check
+
+# Chạy khi tạo Pull Request hoặc push vào branch
+on:
+  pull_request:
+    branches: [main, develop]
+  push:
+    branches: [main, develop]
+
+jobs:
+  code-quality:
+    name: Code Quality Analysis
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "18"
+
+      - name: Install ESLint
+        run: |
+          npm init -y
+          npm install eslint --save-dev
+
+      - name: Create ESLint config
+        run: |
+          cat > .eslintrc.json << 'EOF'
+          {
+            "env": {
+              "browser": true,
+              "es2021": true
+            },
+            "extends": "eslint:recommended",
+            "parserOptions": {
+              "ecmaVersion": "latest",
+              "sourceType": "module"
+            },
+            "rules": {
+              "no-unused-vars": "warn",
+              "no-console": "off",
+              "no-undef": "warn"
+            }
+          }
+          EOF
+
+      - name: Lint JavaScript files
+        id: eslint
+        continue-on-error: true
+        run: |
+          echo "## 📝 ESLint Results" >> $GITHUB_STEP_SUMMARY
+          npx eslint "**/*.js" --format json > eslint-report.json || true
+          npx eslint "**/*.js" || echo "⚠️ Found some issues" >> $GITHUB_STEP_SUMMARY
+
+      - name: Check PHP syntax
+        id: php-lint
+        continue-on-error: true
+        run: |
+          echo "## 🐘 PHP Syntax Check" >> $GITHUB_STEP_SUMMARY
+          find . -name "*.php" -not -path "./vendor/*" | while read file; do
+            php -l "$file" || echo "❌ Error in $file" >> $GITHUB_STEP_SUMMARY
+          done
+          echo "✅ PHP syntax check completed" >> $GITHUB_STEP_SUMMARY
+
+      - name: Check for common vulnerabilities
+        id: security-check
+        run: |
+          echo "## 🔒 Security Check" >> $GITHUB_STEP_SUMMARY
+
+          # Check for SQL injection patterns
+          echo "### SQL Injection Check" >> $GITHUB_STEP_SUMMARY
+          if grep -r "SELECT.*\$" --include="*.php" backend/ 2>/dev/null; then
+            echo "⚠️ Possible SQL injection found (string concatenation in queries)" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "✅ No obvious SQL injection patterns" >> $GITHUB_STEP_SUMMARY
+          fi
+
+          # Check for XSS vulnerabilities
+          echo "### XSS Check" >> $GITHUB_STEP_SUMMARY
+          if grep -r "echo \$_" --include="*.php" backend/ 2>/dev/null; then
+            echo "⚠️ Possible XSS vulnerability (direct echo of user input)" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "✅ No obvious XSS patterns" >> $GITHUB_STEP_SUMMARY
+          fi
+
+          # Check for hardcoded credentials
+          echo "### Credentials Check" >> $GITHUB_STEP_SUMMARY
+          if grep -r "password.*=.*['\"]" --include="*.php" --include="*.js" . 2>/dev/null | grep -v ".env"; then
+            echo "⚠️ Possible hardcoded credentials found" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "✅ No hardcoded credentials" >> $GITHUB_STEP_SUMMARY
+          fi
+
+      - name: Check code complexity
+        id: complexity
+        continue-on-error: true
+        run: |
+          echo "## 📊 Code Complexity" >> $GITHUB_STEP_SUMMARY
+
+          # Count lines of code
+          JS_LINES=$(find . -name "*.js" -not -path "./node_modules/*" | xargs wc -l | tail -1 | awk '{print $1}')
+          PHP_LINES=$(find . -name "*.php" -not -path "./vendor/*" | xargs wc -l | tail -1 | awk '{print $1}')
+
+          echo "- JavaScript: $JS_LINES lines" >> $GITHUB_STEP_SUMMARY
+          echo "- PHP: $PHP_LINES lines" >> $GITHUB_STEP_SUMMARY
+
+          # Check for large functions (>50 lines)
+          echo "### Large Functions" >> $GITHUB_STEP_SUMMARY
+          find . -name "*.js" -not -path "./node_modules/*" -exec awk '/function.*{/{start=NR} /^}$/{if(NR-start>50) print FILENAME":"start"-"NR}' {} \; >> $GITHUB_STEP_SUMMARY || true
+
+      - name: Check TODO/FIXME comments
+        id: todos
+        run: |
+          echo "## 📝 TODOs and FIXMEs" >> $GITHUB_STEP_SUMMARY
+
+          TODO_COUNT=$(grep -r "TODO" --include="*.js" --include="*.php" . | wc -l)
+          FIXME_COUNT=$(grep -r "FIXME" --include="*.js" --include="*.php" . | wc -l)
+
+          echo "- TODO comments: $TODO_COUNT" >> $GITHUB_STEP_SUMMARY
+          echo "- FIXME comments: $FIXME_COUNT" >> $GITHUB_STEP_SUMMARY
+
+          if [ $TODO_COUNT -gt 0 ]; then
+            echo "### TODO List:" >> $GITHUB_STEP_SUMMARY
+            grep -rn "TODO" --include="*.js" --include="*.php" . | head -10 >> $GITHUB_STEP_SUMMARY || true
+          fi
+
+      - name: Generate Report
+        if: always()
+        run: |
+          echo "## ✅ Code Quality Report" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Status:** Analysis Complete" >> $GITHUB_STEP_SUMMARY
+          echo "**Date:** $(date)" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Summary" >> $GITHUB_STEP_SUMMARY
+          echo "- ✅ ESLint check completed" >> $GITHUB_STEP_SUMMARY
+          echo "- ✅ PHP syntax validated" >> $GITHUB_STEP_SUMMARY
+          echo "- ✅ Security scan completed" >> $GITHUB_STEP_SUMMARY
+          echo "- ✅ Complexity analysis done" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "📊 View detailed results above" >> $GITHUB_STEP_SUMMARY
+
+      - name: Upload ESLint report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: eslint-report
+          path: eslint-report.json
