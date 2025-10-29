@@ -1,6 +1,5 @@
 name: AI Code Review with Gemini
 
-# Chạy khi tạo hoặc update Pull Request
 on:
   pull_request:
     types: [opened, synchronize, reopened]
@@ -17,17 +16,7 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
         with:
-          fetch-depth: 2
-
-      - name: Get changed files
-        id: changed-files
-        run: |
-          echo "files<<EOF" >> $GITHUB_OUTPUT
-          git diff --name-only HEAD^1 HEAD | grep -E '\.(js|php|css|html)$' || echo ""
-          echo "EOF" >> $GITHUB_OUTPUT
-
-          count=$(git diff --name-only HEAD^1 HEAD | grep -E '\.(js|php|css|html)$' | wc -l)
-          echo "count=$count" >> $GITHUB_OUTPUT
+          fetch-depth: 0
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -37,10 +26,20 @@ jobs:
       - name: Install dependencies
         run: npm install @google/generative-ai
 
+      - name: Get PR diff
+        id: pr-diff
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          echo "base=$BASE_SHA" >> $GITHUB_OUTPUT
+          echo "head=$HEAD_SHA" >> $GITHUB_OUTPUT
+
       - name: AI Review with Gemini
-        id: gemini-review
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          BASE_SHA: ${{ steps.pr-diff.outputs.base }}
+          HEAD_SHA: ${{ steps.pr-diff.outputs.head }}
         run: |
           cat > review.js << 'EOFJS'
           const { GoogleGenerativeAI } = require('@google/generative-ai');
@@ -48,94 +47,139 @@ jobs:
           const fs = require('fs');
 
           async function reviewCode() {
-            const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-            const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+            try {
+              if (!process.env.GEMINI_API_KEY) {
+                throw new Error('GEMINI_API_KEY not found. Please add it to GitHub Secrets.');
+              }
 
-            // Get changed files
-            const changedFiles = execSync('git diff --name-only HEAD^1 HEAD')
-              .toString()
-              .trim()
-              .split('\n')
-              .filter(f => /\.(js|php|css|html)$/.test(f));
+              const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+              const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash-exp" });
 
-            if (changedFiles.length === 0) {
-              console.log('No files to review');
-              return;
-            }
+              const baseSha = process.env.BASE_SHA;
+              const headSha = process.env.HEAD_SHA;
+              
+              console.log(`Comparing ${baseSha}...${headSha}`);
+              
+              // Fetch base branch
+              execSync(`git fetch origin ${baseSha}`, { stdio: 'inherit' });
+              
+              // Get changed files
+              const changedFiles = execSync(`git diff --name-only ${baseSha}...${headSha}`)
+                .toString()
+                .trim()
+                .split('\n')
+                .filter(f => f && /\.(js|php|css|html)$/.test(f));
 
-            console.log(`Reviewing ${changedFiles.length} files...`);
+              if (changedFiles.length === 0) {
+                console.log('No relevant files to review');
+                fs.writeFileSync('review-output.md', '## 🤖 Gemini Code Review\n\n✅ Không có file JS/PHP/CSS/HTML nào thay đổi.\n');
+                return;
+              }
 
-            let reviewComments = [];
+              console.log(`Found ${changedFiles.length} files to review:`);
+              changedFiles.forEach(f => console.log(`  - ${f}`));
 
-            for (const file of changedFiles) {
-              try {
-                const diff = execSync(`git diff HEAD^1 HEAD -- "${file}"`).toString();
-                
-                if (!diff.trim()) continue;
+              let reviewComments = [];
 
-                const prompt = `Bạn là senior developer review code.
+              for (const file of changedFiles) {
+                try {
+                  console.log(`\nReviewing ${file}...`);
+                  
+                  const diff = execSync(`git diff ${baseSha}...${headSha} -- "${file}"`).toString();
+                  
+                  if (!diff.trim()) {
+                    console.log(`  Skipped (no diff)`);
+                    continue;
+                  }
+
+                  // Limit diff size
+                  const diffPreview = diff.length > 4000 ? diff.substring(0, 4000) + '\n... (truncated)' : diff;
+
+                  const prompt = `Bạn là senior developer review code.
 
           File: ${file}
 
           Diff:
-          \`\`\`
-          ${diff}
+          \`\`\`diff
+          ${diffPreview}
           \`\`\`
 
           Hãy review code changes theo các tiêu chí:
-          1. 🔒 Security (SQL injection, XSS, CSRF)
-          2. 🐛 Bugs tiềm ẩn
-          3. 💡 Code quality & best practices
-          4. ⚡ Performance issues
-          5. 🧹 Maintainability
+          1. 🔒 **Security** - SQL injection, XSS, CSRF, hardcoded credentials
+          2. 🐛 **Bugs** - Logic errors, null pointer, edge cases
+          3. 💡 **Code quality** - Clean code, naming, structure
+          4. ⚡ **Performance** - N+1 queries, memory leaks, slow operations
+          5. 🧹 **Maintainability** - Readability, complexity, documentation
 
-          Chỉ comment nếu có vấn đề quan trọng. Format markdown. Ngắn gọn, cụ thể, bằng tiếng Việt.`;
+          **Chỉ comment nếu có vấn đề thực sự quan trọng hoặc gợi ý cải thiện đáng kể.**
+          Nếu code OK, chỉ cần nói "✅ Looks good!"
 
-                const result = await model.generateContent(prompt);
-                const review = result.response.text();
+          Trả lời ngắn gọn, cụ thể, bằng tiếng Việt. Format markdown.`;
 
-                reviewComments.push({
-                  file,
-                  review
-                });
+                  const result = await model.generateContent(prompt);
+                  const review = result.response.text();
 
-                console.log(`✅ Reviewed ${file}`);
-              } catch (error) {
-                console.error(`Error reviewing ${file}:`, error.message);
+                  reviewComments.push({ file, review });
+                  console.log(`  ✅ Reviewed successfully`);
+                  
+                  // Delay to avoid rate limit
+                  await new Promise(resolve => setTimeout(resolve, 1000));
+
+                } catch (error) {
+                  console.error(`  ❌ Error: ${error.message}`);
+                  reviewComments.push({
+                    file,
+                    review: `⚠️ Không thể review: ${error.message}`
+                  });
+                }
               }
+
+              // Generate review output
+              let fullReview = `## 🤖 Gemini Code Review\n\n`;
+              fullReview += `**Model:** gemini-2.0-flash-exp (FREE)\n`;
+              fullReview += `**Files reviewed:** ${changedFiles.length}\n`;
+              fullReview += `**Date:** ${new Date().toISOString()}\n\n`;
+              fullReview += `---\n\n`;
+
+              if (reviewComments.length === 0) {
+                fullReview += `✅ **Không có vấn đề nào được phát hiện!**\n`;
+              } else {
+                reviewComments.forEach(({ file, review }) => {
+                  fullReview += `### 📄 \`${file}\`\n\n${review}\n\n---\n\n`;
+                });
+              }
+
+              fullReview += `\n*🤖 Review tự động bởi Gemini AI - Vui lòng kiểm tra kỹ trước khi merge!*\n`;
+
+              fs.writeFileSync('review-output.md', fullReview);
+              console.log('\n✅ Review completed successfully!');
+
+            } catch (error) {
+              console.error('Fatal error:', error);
+              const errorMsg = `## 🤖 Gemini Code Review\n\n❌ **Lỗi:** ${error.message}\n\n`;
+              const helpMsg = error.message.includes('GEMINI_API_KEY') 
+                ? `### 🔧 Cách fix:\n1. Vào https://aistudio.google.com/apikey\n2. Tạo API key (miễn phí)\n3. Thêm vào GitHub: Settings → Secrets → Actions → New secret\n   - Name: \`GEMINI_API_KEY\`\n   - Value: <your-api-key>\n`
+                : `### 💡 Suggestions:\n- Kiểm tra logs ở trên để xem chi tiết\n- API key có thể đã hết quota\n- Network issue\n`;
+              
+              fs.writeFileSync('review-output.md', errorMsg + helpMsg);
+              process.exit(0); // Don't fail the workflow
             }
-
-            // Write review to file
-            let fullReview = `## 🤖 Gemini Code Review\n\n`;
-            fullReview += `**Model:** gemini-2.5-flash\n`;
-            fullReview += `**Files reviewed:** ${changedFiles.length}\n\n`;
-
-            if (reviewComments.length === 0) {
-              fullReview += `✅ Không phát hiện vấn đề nghiêm trọng!\n`;
-            } else {
-              reviewComments.forEach(({ file, review }) => {
-                fullReview += `### 📄 \`${file}\`\n\n${review}\n\n---\n\n`;
-              });
-            }
-
-            fs.writeFileSync('review-output.md', fullReview);
-            console.log('Review completed!');
           }
 
-          reviewCode().catch(console.error);
+          reviewCode();
           EOFJS
 
           node review.js
 
       - name: Comment PR with Review
-        uses: actions/github-script@v6
+        if: always()
+        uses: actions/github-script@v7
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
             const fs = require('fs');
 
-            let reviewBody = '## 🤖 Gemini Code Review\n\n';
-            reviewBody += '⚠️ Không thể load review. Kiểm tra logs để xem chi tiết.\n';
+            let reviewBody = '## 🤖 Gemini Code Review\n\n⚠️ Không thể load review. Kiểm tra logs.\n';
 
             try {
               if (fs.existsSync('review-output.md')) {
@@ -145,21 +189,26 @@ jobs:
               console.error('Error reading review:', error);
             }
 
-            // Find and delete old bot comments
-            const { data: comments } = await github.rest.issues.listComments({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              issue_number: context.issue.number,
-            });
+            // Delete old bot comments
+            try {
+              const { data: comments } = await github.rest.issues.listComments({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+              });
 
-            for (const comment of comments) {
-              if (comment.user.type === 'Bot' && comment.body.includes('Gemini Code Review')) {
-                await github.rest.issues.deleteComment({
-                  owner: context.repo.owner,
-                  repo: context.repo.repo,
-                  comment_id: comment.id,
-                });
+              for (const comment of comments) {
+                if (comment.user.type === 'Bot' && comment.body.includes('Gemini Code Review')) {
+                  await github.rest.issues.deleteComment({
+                    owner: context.repo.owner,
+                    repo: context.repo.repo,
+                    comment_id: comment.id,
+                  });
+                  console.log(`Deleted old comment ${comment.id}`);
+                }
               }
+            } catch (error) {
+              console.error('Error managing comments:', error);
             }
 
             // Post new review
@@ -169,3 +218,5 @@ jobs:
               issue_number: context.issue.number,
               body: reviewBody
             });
+
+            console.log('Posted review comment');
