@@ -1,0 +1,851 @@
+{
+  "info": {
+    "name": "HRM System API - SECURED 🔒",
+    "description": "Complete API collection for HRM System with Authentication\n\n⚠️ QUAN TRỌNG:\n1. Bật Cookies trong Postman: Settings → General → Enable cookies\n2. Phải login TRƯỚC khi test các API khác\n3. Admin routes (DELETE) cần login với admin account\n\n🔐 Test accounts:\n- Admin: username=admin, password=123456\n- User: username=user, password=123456",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost/ASM-HRM/backend/api.php",
+      "type": "string"
+    }
+  ],
+  "auth": {
+    "type": "noauth"
+  },
+  "item": [
+    {
+      "name": "⚠️ START HERE - Authentication",
+      "description": "� BẮT BUỘC: Phải login trước khi test các API khác!\n\n✅ CÁCH DÙNG:\n1. Bật Cookies: Settings → General → Enable cookies\n2. Chạy \"Login\" request\n3. Postman tự động lưu session cookie\n4. Test các API khác (sẽ tự động gửi cookie)\n\n�🔐 Test accounts:\n- Admin: admin/123456 (có quyền DELETE)\n- User: user/123456 (không có quyền DELETE)",
+      "item": [
+        {
+          "name": "✅ Login (Admin)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "// Tự động kiểm tra login thành công",
+                  "pm.test(\"Login successful\", function () {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.success).to.eql(true);",
+                  "});",
+                  "",
+                  "pm.test(\"Session cookie được set\", function () {",
+                  "    pm.expect(pm.cookies.has('PHPSESSID')).to.be.true;",
+                  "});",
+                  "",
+                  "// Hiển thị thông báo",
+                  "console.log('✅ Đã login thành công! Session cookie đã được lưu.');"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"admin\",\n  \"password\": \"123456\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}?path=auth/login",
+              "host": ["{{baseUrl}}"],
+              "query": [
+                {
+                  "key": "path",
+                  "value": "auth/login"
+                }
+              ]
+            },
+            "description": "🔐 Login với admin account\n\nAccount: admin/123456\nQuyền: Full access (bao gồm DELETE)"
+          },
+          "response": []
+        },
+        {
+          "name": "Login (User thường)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Login successful\", function () {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.success).to.eql(true);",
+                  "});",
+                  "",
+                  "console.log('✅ Đã login user thường. Không có quyền DELETE.');"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"user\",\n  \"password\": \"123456\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}?path=auth/login",
+              "host": ["{{baseUrl}}"],
+              "query": [
+                {
+                  "key": "path",
+                  "value": "auth/login"
+                }
+              ]
+            },
+            "description": "🔐 Login với user account\n\nAccount: user/123456\nQuyền: Chỉ GET/POST/PUT (KHÔNG có quyền DELETE)"
+          },
+          "response": []
+        },
+        {
+          "name": "Register",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"newuser\",\n  \"password\": \"password123\",\n  \"email\": \"user@example.com\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}?path=auth/register",
+              "host": ["{{baseUrl}}"],
+              "query": [
+                {
+                  "key": "path",
+                  "value": "auth/register"
+                }
+              ]
+            },
+            "description": "📝 Đăng ký tài khoản mới\n\n⚠️ Public endpoint - không cần login"
+          },
+          "response": []
+        },
+        {
+          "name": "Check Session",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "var jsonData = pm.response.json();",
+                  "",
+                  "if (jsonData.logged_in) {",
+                  "    console.log('✅ Đã login: ' + jsonData.username);",
+                  "    console.log('Role: ' + (jsonData.role || 'user'));",
+                  "} else {",
+                  "    console.log('❌ Chưa login - Vui lòng login trước!');",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}?path=auth/session",
+              "host": ["{{baseUrl}}"],
+              "query": [
+                {
+                  "key": "path",
+                  "value": "auth/session"
+                }
+              ]
+            },
+            "description": "🔍 Kiểm tra trạng thái session hiện tại\n\n⚠️ Public endpoint - không cần login"
+          },
+          "response": []
+        },
+        {
+          "name": "Logout",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Logout successful\", function () {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.success).to.eql(true);",
+                  "});",
+                  "",
+                  "console.log('✅ Đã logout. Session đã bị xóa.');"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}?path=auth/logout",
+              "host": ["{{baseUrl}}"],
+              "query": [
+                {
+                  "key": "path",
+                  "value": "auth/logout"
+                }
+              ]
+            },
+            "description": "🚪 Đăng xuất và xóa session"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "👥 Employees (Protected)",
+      "description": "🔒 CẦN LOGIN trước khi test!\n\n✅ GET/POST/PUT: Cần login (admin hoặc user)\n🔴 DELETE: CHỈ admin mới được phép",
+      "item": [
+        {
+          "name": "Login",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"admin\",\n  \"password\": \"123456\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}?path=auth/login",
+              "host": ["{{baseUrl}}"],
+              "query": [
+                {
+                  "key": "path",
+                  "value": "auth/login"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Register",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"newuser\",\n  \"password\": \"password123\",\n  \"email\": \"user@example.com\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}?path=auth/register",
+              "host": ["{{baseUrl}}"],
+              "query": [
+                {
+                  "key": "path",
+                  "value": "auth/register"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Check Session",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}?path=auth/session",
+              "host": ["{{baseUrl}}"],
+              "query": [
+                {
+                  "key": "path",
+                  "value": "auth/session"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Logout",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}?path=auth/logout",
+              "host": ["{{baseUrl}}"],
+              "query": [
+                {
+                  "key": "path",
+                  "value": "auth/logout"
+                }
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "👥 Employees",
+      "item": [
+        {
+          "name": "Get All Employees",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 401) {",
+                  "    console.log('❌ CHƯA LOGIN! Vui lòng login trước.');",
+                  "} else if (pm.response.code === 200) {",
+                  "    console.log('✅ Success! Bạn đã login.');",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}?path=employees",
+              "host": ["{{baseUrl}}"],
+              "query": [
+                {
+                  "key": "path",
+                  "value": "employees"
+                }
+              ]
+            },
+            "description": "📋 Lấy danh sách tất cả nhân viên\n\n🔒 Cần login: ✅\n🔑 Admin only: ❌"
+          },
+          "response": []
+        },
+        {
+          "name": "Get Employee by ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}?path=employees/1",
+              "host": ["{{baseUrl}}"],
+              "query": [
+                {
+                  "key": "path",
+                  "value": "employees/1"
+                }
+              ]
+            },
+            "description": "👤 Lấy thông tin nhân viên theo ID\n\n🔒 Cần login: ✅\n🔑 Admin only: ❌"
+          },
+          "response": []
+        },
+        {
+          "name": "Create Employee",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Nguyen Van A\",\n  \"email\": \"nguyenvana@example.com\",\n  \"phone\": \"0123456789\",\n  \"position_id\": 1,\n  \"department_id\": 1,\n  \"hire_date\": \"2024-01-15\",\n  \"salary\": 15000000\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}?path=employees",
+              "host": ["{{baseUrl}}"],
+              "query": [
+                {
+                  "key": "path",
+                  "value": "employees"
+                }
+              ]
+            },
+            "description": "➕ Tạo nhân viên mới\n\n🔒 Cần login: ✅\n🔑 Admin only: ❌"
+          },
+          "response": []
+        },
+        {
+          "name": "Update Employee",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Nguyen Van A Updated\",\n  \"email\": \"nguyenvana.new@example.com\",\n  \"phone\": \"0987654321\",\n  \"position_id\": 2,\n  \"department_id\": 1,\n  \"salary\": 18000000\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}?path=employees/1",
+              "host": ["{{baseUrl}}"],
+              "query": [
+                {
+                  "key": "path",
+                  "value": "employees/1"
+                }
+              ]
+            },
+            "description": "✏️ Cập nhật thông tin nhân viên\n\n🔒 Cần login: ✅\n🔑 Admin only: ❌"
+          },
+          "response": []
+        },
+        {
+          "name": "🔴 Delete Employee (Admin Only)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 403) {",
+                  "    console.log('🔴 FORBIDDEN! Chỉ admin mới có quyền xóa.');",
+                  "    console.log('💡 Tip: Login lại với admin account.');",
+                  "} else if (pm.response.code === 401) {",
+                  "    console.log('❌ CHƯA LOGIN! Vui lòng login trước.');",
+                  "} else if (pm.response.code === 200) {",
+                  "    console.log('✅ Success! Bạn là admin.');",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}?path=employees/1",
+              "host": ["{{baseUrl}}"],
+              "query": [
+                {
+                  "key": "path",
+                  "value": "employees/1"
+                }
+              ]
+            },
+            "description": "🗑️ Xóa nhân viên\n\n🔒 Cần login: ✅\n🔴 Admin only: ✅ (CHỈ ADMIN)\n\n⚠️ Nếu login với user thường → 403 Forbidden"
+          },
+          "response": []
+        },
+        {
+          "name": "Search Employees",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"keyword\": \"nguyen\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}?path=employees/search",
+              "host": ["{{baseUrl}}"],
+              "query": [
+                {
+                  "key": "path",
+                  "value": "employees/search"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Employee Stats",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}?path=employees/stats",
+              "host": ["{{baseUrl}}"],
+              "query": [
+                {
+                  "key": "path",
+                  "value": "employees/stats"
+                }
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "🏢 Departments",
+      "item": [
+        {
+          "name": "Get All Departments",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}?path=departments",
+              "host": ["{{baseUrl}}"],
+              "query": [
+                {
+                  "key": "path",
+                  "value": "departments"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Create Department",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Phòng Marketing\",\n  \"description\": \"Phòng Marketing và Truyền thông\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}?path=departments",
+              "host": ["{{baseUrl}}"],
+              "query": [
+                {
+                  "key": "path",
+                  "value": "departments"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Update Department",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Phòng Marketing & Sales\",\n  \"description\": \"Phòng Marketing và Kinh doanh\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}?path=departments/1",
+              "host": ["{{baseUrl}}"],
+              "query": [
+                {
+                  "key": "path",
+                  "value": "departments/1"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Delete Department",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}?path=departments/1",
+              "host": ["{{baseUrl}}"],
+              "query": [
+                {
+                  "key": "path",
+                  "value": "departments/1"
+                }
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "💼 Positions",
+      "item": [
+        {
+          "name": "Get All Positions",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}?path=positions",
+              "host": ["{{baseUrl}}"],
+              "query": [
+                {
+                  "key": "path",
+                  "value": "positions"
+                }
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "⏰ Attendance",
+      "item": [
+        {
+          "name": "Check In",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"employee_id\": 1\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}?path=attendance/checkin",
+              "host": ["{{baseUrl}}"],
+              "query": [
+                {
+                  "key": "path",
+                  "value": "attendance/checkin"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Check Out",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"employee_id\": 1\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}?path=attendance/checkout",
+              "host": ["{{baseUrl}}"],
+              "query": [
+                {
+                  "key": "path",
+                  "value": "attendance/checkout"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Today Count",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}?path=attendance/today-count",
+              "host": ["{{baseUrl}}"],
+              "query": [
+                {
+                  "key": "path",
+                  "value": "attendance/today-count"
+                }
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "🏖️ Leave Management",
+      "item": [
+        {
+          "name": "Get All Leaves",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}?path=leaves",
+              "host": ["{{baseUrl}}"],
+              "query": [
+                {
+                  "key": "path",
+                  "value": "leaves"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Request Leave",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"employee_id\": 1,\n  \"leave_type\": \"annual\",\n  \"start_date\": \"2024-02-01\",\n  \"end_date\": \"2024-02-03\",\n  \"reason\": \"Nghỉ phép hằng năm\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}?path=leaves",
+              "host": ["{{baseUrl}}"],
+              "query": [
+                {
+                  "key": "path",
+                  "value": "leaves"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Approve Leave",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"leave_id\": 1,\n  \"status\": \"approved\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}?path=leaves/approve",
+              "host": ["{{baseUrl}}"],
+              "query": [
+                {
+                  "key": "path",
+                  "value": "leaves/approve"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Pending Count",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}?path=leaves/pending-count",
+              "host": ["{{baseUrl}}"],
+              "query": [
+                {
+                  "key": "path",
+                  "value": "leaves/pending-count"
+                }
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "📊 Performance Reviews",
+      "item": [
+        {
+          "name": "Get All Reviews",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}?path=reviews",
+              "host": ["{{baseUrl}}"],
+              "query": [
+                {
+                  "key": "path",
+                  "value": "reviews"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Create Review",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"employee_id\": 1,\n  \"reviewer_id\": 2,\n  \"review_date\": \"2024-01-31\",\n  \"rating\": 4.5,\n  \"comments\": \"Làm việc tốt, có tinh thần trách nhiệm\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}?path=reviews",
+              "host": ["{{baseUrl}}"],
+              "query": [
+                {
+                  "key": "path",
+                  "value": "reviews"
+                }
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    }
+  ]
+}

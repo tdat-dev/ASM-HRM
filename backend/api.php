@@ -46,12 +46,18 @@ foreach (glob(__DIR__ . '/controllers/*.php') as $controller) {
     require_once $controller;
 }
 
+// Require middleware
+require_once __DIR__ . '/middleware/AuthMiddleware.php';
+
 // Khởi tạo session
 session_start();
 
 // Lấy request method và path
 $method = $_SERVER['REQUEST_METHOD'];
 $path = $_GET['path'] ?? '';
+
+// ✅ KIỂM TRA AUTHENTICATION TRƯỚC!
+AuthMiddleware::check($method, $path);
 
 // Parse request body
 $input = json_decode(file_get_contents('php://input'), true);
