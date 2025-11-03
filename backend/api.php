@@ -3,6 +3,8 @@
 error_reporting(E_ALL);
 ini_set('display_errors', 0); // Tắt display_errors để không in HTML ra output
 ini_set('log_errors', 1); // Log lỗi vào error log thay vì hiển thị
+echo('Hello Die');
+die();
 
 // CORS Headers - Cho phép cross-origin requests
 $allowedOrigins = [
