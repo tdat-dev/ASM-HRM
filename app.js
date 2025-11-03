@@ -81,67 +81,68 @@ const routes = {
     viewEl.innerHTML =
       '<div style="text-align: center; padding: 40px;"><p>⏳ Đang tải dữ liệu...</p></div>';
 
-    // Lấy dữ liệu (AWAIT API calls)
-    const employees = await EmployeeDb.getAllEmployees();
-    const departments = await EmployeeDb.getAllDepartments();
-    const positions = await EmployeeDb.getAllPositions();
-    const attendanceData = JSON.parse(
-      localStorage.getItem("hrm_attendance") || "[]"
-    );
-    const leaveData = JSON.parse(localStorage.getItem("hrm_leaves") || "[]");
+    try {
+      // Lấy dữ liệu (AWAIT API calls)
+      const employees = await EmployeeDb.getAllEmployees();
+      const departments = await EmployeeDb.getAllDepartments();
+      const positions = await EmployeeDb.getAllPositions();
+      const attendanceData = JSON.parse(
+        localStorage.getItem("hrm_attendance") || "[]"
+      );
+      const leaveData = JSON.parse(localStorage.getItem("hrm_leaves") || "[]");
 
-    // Chuẩn hóa tiền tệ (API trả về dạng string, đôi khi kèm ký tự)
-    const normalizeMoney = (value) => {
-      if (value === null || value === undefined) {
-        return 0;
-      }
-      const cleaned =
-        typeof value === "string" ? value.replace(/[^0-9.-]/g, "") : value;
-      const number = Number(cleaned);
-      return Number.isFinite(number) ? number : 0;
-    };
+      // Chuẩn hóa tiền tệ (API trả về dạng string, đôi khi kèm ký tự)
+      const normalizeMoney = (value) => {
+        if (value === null || value === undefined) {
+          return 0;
+        }
+        const cleaned =
+          typeof value === "string" ? value.replace(/[^0-9.-]/g, "") : value;
+        const number = Number(cleaned);
+        return Number.isFinite(number) ? number : 0;
+      };
 
-    // Tính toán thống kê
-    const totalEmployees = employees.length;
-    const totalDepartments = departments.length;
-    const totalPositions = positions.length;
-    const avgSalary =
-      employees.length > 0
-        ? Math.round(
-            employees.reduce(
-              (sum, emp) => sum + normalizeMoney(emp.salary),
-              0
-            ) / employees.length
-          )
-        : 0;
+      // Tính toán thống kê
+      const totalEmployees = employees.length;
+      const totalDepartments = departments.length;
+      const totalPositions = positions.length;
+      const avgSalary =
+        employees.length > 0
+          ? Math.round(
+              employees.reduce(
+                (sum, emp) => sum + normalizeMoney(emp.salary),
+                0
+              ) / employees.length
+            )
+          : 0;
 
-    const today = new Date().toISOString().slice(0, 10);
-    const todayAttendance = attendanceData.filter(
-      (a) => a.date === today
-    ).length;
-
-    const pendingLeaves = leaveData.filter(
-      (l) => l.status === "pending"
-    ).length;
-
-    // Tính tổng chi phí lương hàng tháng
-    const totalMonthlyCost = employees.reduce((sum, emp) => {
-      const salary = normalizeMoney(emp.salary);
-      const bonus = normalizeMoney(emp.bonus);
-      const deduction = normalizeMoney(emp.deduction);
-      return sum + salary + bonus - deduction;
-    }, 0);
-
-    // Thống kê nhân viên theo phòng ban
-    const empsByDept = departments.map((dept) => {
-      const count = employees.filter(
-        (emp) => emp.departmentId === dept.id
+      const today = new Date().toISOString().slice(0, 10);
+      const todayAttendance = attendanceData.filter(
+        (a) => a.date === today
       ).length;
-      return { name: dept.name, count };
-    });
 
-    // Dashboard HTML với grid layout
-    const dashboardHTML = `
+      const pendingLeaves = leaveData.filter(
+        (l) => l.status === "pending"
+      ).length;
+
+      // Tính tổng chi phí lương hàng tháng
+      const totalMonthlyCost = employees.reduce((sum, emp) => {
+        const salary = normalizeMoney(emp.salary);
+        const bonus = normalizeMoney(emp.bonus);
+        const deduction = normalizeMoney(emp.deduction);
+        return sum + salary + bonus - deduction;
+      }, 0);
+
+      // Thống kê nhân viên theo phòng ban
+      const empsByDept = departments.map((dept) => {
+        const count = employees.filter(
+          (emp) => emp.departmentId === dept.id
+        ).length;
+        return { name: dept.name, count };
+      });
+
+      // Dashboard HTML với grid layout
+      const dashboardHTML = `
       <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px; margin-bottom: 24px;">
         <div class="stat-card" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 24px; border-radius: 16px; box-shadow: var(--shadow-lg);">
           <div style="font-size: 14px; opacity: 0.9; margin-bottom: 8px;">Tổng Nhân viên</div>
@@ -264,7 +265,22 @@ const routes = {
       </div>
     `;
 
-    viewEl.innerHTML = dashboardHTML;
+      viewEl.innerHTML = dashboardHTML;
+    } catch (error) {
+      console.error("Dashboard error:", error);
+      // Nếu lỗi 401 Unauthorized, redirect về login
+      if (error.message && error.message.includes("Unauthorized")) {
+        showAuth();
+        return;
+      }
+      // Lỗi khác, hiển thị thông báo
+      viewEl.innerHTML = `
+        <div style="text-align: center; padding: 40px;">
+          <p style="color: var(--danger);">❌ Lỗi: ${error.message}</p>
+          <button onclick="location.reload()" class="secondary">Tải lại trang</button>
+        </div>
+      `;
+    }
   },
   "employees-add": () => AddEmployeeModule.mount(viewEl, pageTitleEl),
   "employees-edit": () => EditEmployeeModule.mount(viewEl, pageTitleEl),
@@ -315,6 +331,12 @@ async function init() {
   AuthModule.ensureInitialized();
   EmployeeDb.ensureInitialized();
   registerMenuHandlers();
+
+  // Global auth required handler
+  window.addEventListener("auth-required", () => {
+    showAuth();
+  });
+
   logoutBtn.addEventListener("click", async () => {
     await AuthModule.logout();
     showAuth();
