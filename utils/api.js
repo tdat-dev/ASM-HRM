@@ -46,14 +46,31 @@ export async function callAPI(endpoint, options = {}) {
     const response = await fetch(url, config);
     const result = await response.json();
 
+    // Kiểm tra 401 Unauthorized
+    if (response.status === 401) {
+      // Redirect về trang login
+      if (
+        window.location.pathname !== "/index.html" &&
+        !window.location.pathname.endsWith("/")
+      ) {
+        window.location.href = "/";
+      }
+      // Trigger event để app.js xử lý
+      window.dispatchEvent(new CustomEvent("auth-required"));
+      throw new Error(result.message || "Unauthorized - Vui lòng đăng nhập");
+    }
+
     if (!result.success) {
       throw new Error(result.message || "API call failed");
     }
 
     return result;
   } catch (error) {
-    // Không log "Chưa đăng nhập" vì đây là trạng thái bình thường
-    if (!error.message?.includes("Chưa đăng nhập")) {
+    // Không log "Chưa đăng nhập" hoặc "Unauthorized" vì đây là trạng thái bình thường
+    if (
+      !error.message?.includes("Chưa đăng nhập") &&
+      !error.message?.includes("Unauthorized")
+    ) {
       console.error("API Error:", error);
     }
     throw error;
