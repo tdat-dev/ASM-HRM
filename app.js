@@ -16,6 +16,9 @@ import { OnboardingModule } from "./modules/onboarding-module.js";
 import { PayrollModule } from "./modules/payroll-module.js";
 import { ReportsModule } from "./modules/reports-module.js";
 import { NotificationsModule } from "./modules/notifications-module.js";
+import { CoreHrModule } from "./modules/core-hr-module.js";
+import { DirectoryModule } from "./modules/directory-module.js";
+import { OrgChartModule } from "./modules/org-chart-module.js";
 
 const viewEl = document.getElementById("view");
 const pageTitleEl = document.getElementById("pageTitle");
@@ -379,6 +382,9 @@ const routes = {
   payroll: () => PayrollModule.mount(viewEl, pageTitleEl),
   reports: () => ReportsModule.mount(viewEl, pageTitleEl),
   notifications: () => NotificationsModule.mount(viewEl, pageTitleEl),
+  "core-hr": () => CoreHrModule.mount(viewEl, pageTitleEl),
+  "directory": () => DirectoryModule.mount(viewEl, pageTitleEl),
+  "org-chart": () => OrgChartModule.mount(viewEl, pageTitleEl),
 };
 
 // Gắn sự kiện cho menu sidebar
