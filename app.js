@@ -10,6 +10,12 @@ import { SalaryModule } from "./modules/salary-module.js";
 import { AttendanceModule } from "./modules/attendance-module.js";
 import { LeaveModule } from "./modules/leave-module.js";
 import { PerformanceModule } from "./modules/performance-module.js";
+import { EssModule } from "./modules/ess-module.js";
+import { RecruitmentModule } from "./modules/recruitment-module.js";
+import { OnboardingModule } from "./modules/onboarding-module.js";
+import { PayrollModule } from "./modules/payroll-module.js";
+import { ReportsModule } from "./modules/reports-module.js";
+import { NotificationsModule } from "./modules/notifications-module.js";
 
 const viewEl = document.getElementById("view");
 const pageTitleEl = document.getElementById("pageTitle");
@@ -292,6 +298,12 @@ const routes = {
   attendance: () => AttendanceModule.mount(viewEl, pageTitleEl),
   leave: () => LeaveModule.mount(viewEl, pageTitleEl),
   performance: () => PerformanceModule.mount(viewEl, pageTitleEl),
+  ess: () => EssModule.mount(viewEl, pageTitleEl),
+  recruitment: () => RecruitmentModule.mount(viewEl, pageTitleEl),
+  onboarding: () => OnboardingModule.mount(viewEl, pageTitleEl),
+  payroll: () => PayrollModule.mount(viewEl, pageTitleEl),
+  reports: () => ReportsModule.mount(viewEl, pageTitleEl),
+  notifications: () => NotificationsModule.mount(viewEl, pageTitleEl),
 };
 
 // Gắn sự kiện cho menu sidebar
