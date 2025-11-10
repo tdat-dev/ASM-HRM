@@ -1,5 +1,5 @@
 import { EmployeeDb } from "./employee-db-module.js";
-import { renderTable } from "../utils/dom.js";
+import { renderTable, formatVND, escapeHTML } from "../utils/dom.js";
 
 // Tính lương thực lĩnh dựa trên lương cơ bản, thưởng và khấu trừ
 function calculateNetSalary(employee) {
@@ -38,22 +38,22 @@ export const SalaryModule = {
     const columns = [
       {
         header: "Mã NV",
-        cell: (row) =>
-          `<span style="background: var(--primary); color: white; padding: 4px 8px; border-radius: 6px; font-weight: 600; font-size: 12px;">#${row.id}</span>`,
+        cell: (row) => `<span class="id-badge">#${row.id}</span>`,
       },
-      { header: "Tên", cell: (row) => row.name },
-      { header: "Lương", cell: (row) => `${row.salary.toLocaleString()} VNĐ` },
-      { header: "Thưởng", cell: (row) => `${row.bonus.toLocaleString()} VNĐ` },
+      { header: "Tên", cell: (row) => escapeHTML(row.name || "") },
+      { header: "Lương", cell: (row) => formatVND(row.salary) },
+      { header: "Thưởng", cell: (row) => formatVND(row.bonus) },
       {
         header: "Khấu trừ",
-        cell: (row) => `${row.deduction.toLocaleString()} VNĐ`,
+        cell: (row) => formatVND(row.deduction),
       },
       {
         header: "Thực lĩnh",
         cell: (row) =>
-          `<strong style="color: var(--success);">${row.net.toLocaleString()} VNĐ</strong>`,
+          `<strong class="amount-positive">${formatVND(row.net)}</strong>`,
       },
     ];
-    renderTable(table, columns, rows);
+    // Cho phép HTML trong cell (id-badge, strong)
+    renderTable(table, columns, rows, false);
   },
 };

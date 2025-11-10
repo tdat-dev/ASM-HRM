@@ -1,13 +1,30 @@
 import { EmployeeDb } from "./employee-db-module.js";
+import { escapeHTML, formatVND } from "../utils/dom.js";
 
-// Demo: công thức đơn giản cho thuế & bảo hiểm (giả lập)
+// Constants cho tính toán bảo hiểm và thuế (theo quy định VN - demo)
+const FAMILY_DEDUCTION = 11000000; // Giảm trừ gia cảnh: 11 triệu VNĐ
+const BHXH_RATE = 0.08; // 8% BHXH
+const BHYT_RATE = 0.015; // 1.5% BHYT
+const BHTN_RATE = 0.01; // 1% BHTN
+const PIT_RATE_BRACKET_1 = 0.05; // Thuế TNCN bậc 1: 5% (demo, chỉ dùng bậc 1)
+
+/**
+ * Tính toán các khoản khấu trừ (BHXH, BHYT, BHTN, Thuế TNCN)
+ * @param {number} baseSalary - Lương cơ bản
+ * @returns {Object} Các khoản khấu trừ
+ */
 function computeDeductions(baseSalary) {
-  const BHXH = Math.round(baseSalary * 0.08);
-  const BHYT = Math.round(baseSalary * 0.015);
-  const BHTN = Math.round(baseSalary * 0.01);
+  const BHXH = Math.round(baseSalary * BHXH_RATE);
+  const BHYT = Math.round(baseSalary * BHYT_RATE);
+  const BHTN = Math.round(baseSalary * BHTN_RATE);
   const insuranceTotal = BHXH + BHYT + BHTN;
-  const taxableIncome = Math.max(baseSalary - 11000000 - insuranceTotal, 0); // giảm trừ gia cảnh 11tr
-  const PIT = Math.round(taxableIncome * 0.05); // bậc 1 5% (demo)
+  
+  // Thu nhập chịu thuế = Lương - Giảm trừ gia cảnh - Bảo hiểm
+  const taxableIncome = Math.max(baseSalary - FAMILY_DEDUCTION - insuranceTotal, 0);
+  
+  // Thuế TNCN bậc 1 (demo, chỉ tính bậc 1)
+  const PIT = Math.round(taxableIncome * PIT_RATE_BRACKET_1);
+  
   return { BHXH, BHYT, BHTN, insuranceTotal, PIT };
 }
 
@@ -19,6 +36,10 @@ export const PayrollModule = {
     container.className = "card";
     container.innerHTML = `
       <h3>Phiếu lương (payslip) • Demo</h3>
+      <p class="muted" style="font-size: 12px; margin-bottom: 12px;">
+        Lưu ý: Công thức tính toán này chỉ mang tính chất demo. 
+        Trong hệ thống thực tế, cần tuân thủ đúng quy định về thuế và bảo hiểm của Việt Nam.
+      </p>
       <div id="payslip"></div>
     `;
     viewEl.appendChild(container);
@@ -46,6 +67,7 @@ export const PayrollModule = {
     });
 
     const list = document.createElement("div");
+    // Escape tất cả dữ liệu động để chống XSS
     list.innerHTML = `
       <table class="table">
         <thead>
@@ -60,18 +82,18 @@ export const PayrollModule = {
             .map(
               (r) => `
               <tr>
-                <td>#${r.id}</td>
-                <td>${r.name}</td>
-                <td>${r.base.toLocaleString()}</td>
-                <td>${r.bonus.toLocaleString()}</td>
-                <td>${r.penalty.toLocaleString()}</td>
-                <td>${r.BHXH.toLocaleString()}</td>
-                <td>${r.BHYT.toLocaleString()}</td>
-                <td>${r.BHTN.toLocaleString()}</td>
-                <td>${r.PIT.toLocaleString()}</td>
-                <td>${r.gross.toLocaleString()}</td>
-                <td>${r.totalDeduction.toLocaleString()}</td>
-                <td><strong style="color: var(--success);">${r.net.toLocaleString()}</strong></td>
+                <td>#${escapeHTML(String(r.id || ""))}</td>
+                <td>${escapeHTML(r.name || "")}</td>
+                <td>${formatVND(r.base)}</td>
+                <td>${formatVND(r.bonus)}</td>
+                <td>${formatVND(r.penalty)}</td>
+                <td>${formatVND(r.BHXH)}</td>
+                <td>${formatVND(r.BHYT)}</td>
+                <td>${formatVND(r.BHTN)}</td>
+                <td>${formatVND(r.PIT)}</td>
+                <td>${formatVND(r.gross)}</td>
+                <td>${formatVND(r.totalDeduction)}</td>
+                <td><strong class="amount-positive">${formatVND(r.net)}</strong></td>
               </tr>
             `
             )
@@ -80,8 +102,7 @@ export const PayrollModule = {
       </table>
     `;
     container.querySelector("#payslip").appendChild(list);
+    // Không escape cell string vì đã tự escape tên và chỉ render số/formatVND
+    // (Bảng này không dùng renderTable helper)
   },
 };
-
-
-

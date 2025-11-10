@@ -204,12 +204,70 @@ Password: admin123
 
 ## 📝 Documentation
 
-Xem [REPORT.md](./REPORT.md) cho báo cáo chi tiết về:
+- [SECURITY-FIXES.md](./SECURITY-FIXES.md) - Báo cáo khắc phục lỗ hổng bảo mật
+- [XSS-EXPLAINED.md](./XSS-EXPLAINED.md) - Giải thích chi tiết về XSS và cách phòng chống
+- [SECURITY.md](./SECURITY.md) - Tài liệu bảo mật tổng quan
+- [SECURITY-ISSUES.md](./SECURITY-ISSUES.md) - Các vấn đề bảo mật đã phát hiện
 
-- Cách triển khai từng module
-- Thách thức & giải pháp
-- Kỹ thuật JavaScript nâng cao
-- Testing & Validation
+### Demo XSS Vulnerability
+
+Mở file `demo-xss-vulnerability.html` trong trình duyệt để xem demo trực quan về:
+- Cách XSS hoạt động
+- So sánh code trước/sau khi sửa
+- Các kịch bản tấn công phổ biến
+
+**📖 Hướng dẫn chi tiết:** Xem [HUONG-DAN-DEMO-XSS.md](./HUONG-DAN-DEMO-XSS.md) để hiểu cách sử dụng demo từng bước.
+
+## 📝 Commit Message Guide
+
+### Thiết Lập Template (Chạy 1 lần)
+
+**Windows:**
+```bash
+.\git-commit-template-setup.bat
+```
+
+**Linux/Mac:**
+```bash
+chmod +x .git-commit-template-setup.sh
+./git-commit-template-setup.sh
+```
+
+Hoặc thiết lập thủ công:
+```bash
+git config commit.template .gitmessage
+```
+
+### Format Commit Message
+
+```
+<type>(<scope>): <subject>
+
+<body>
+
+<footer>
+```
+
+**Ví dụ:**
+```bash
+git commit -m "feat(ess): thêm form nộp đơn nghỉ phép"
+```
+
+**Types:** `feat`, `fix`, `docs`, `style`, `refactor`, `perf`, `test`, `chore`  
+**Scopes:** `ess`, `auth`, `payroll`, `recruitment`, `leave`, `attendance`, etc.
+
+Xem chi tiết tại [COMMIT-GUIDE.md](./COMMIT-GUIDE.md)
+
+### Quy Tắc Đặt Tên Nhánh
+
+```
+type/short-description
+```
+
+**Ví dụ:**
+- `feature/ess-leave-request-form`
+- `fix/payroll-tax-calculation`
+- `refactor/auth-module-split`
 
 ## 🤝 Contributing
 

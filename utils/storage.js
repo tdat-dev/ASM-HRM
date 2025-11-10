@@ -8,6 +8,22 @@ const delay = (milliseconds) =>
 // Đính kèm namespace để tránh đụng độ khóa trong LocalStorage
 const withNs = (key) => `${NAMESPACE}:${key}`;
 
+/**
+ * Parse JSON an toàn với error handling
+ * @param {string} jsonString - Chuỗi JSON cần parse
+ * @param {*} fallback - Giá trị mặc định nếu parse lỗi (mặc định: [])
+ * @returns {*} Dữ liệu đã parse hoặc fallback
+ */
+export function safeJSONParse(jsonString, fallback = []) {
+  try {
+    if (!jsonString) return fallback;
+    return JSON.parse(jsonString);
+  } catch (error) {
+    console.error("Lỗi khi parse JSON:", error);
+    return fallback;
+  }
+}
+
 export const storage = {
   async get(key, fallback = null) {
     const raw = localStorage.getItem(withNs(key));

@@ -87,6 +87,22 @@
               <i class="fas fa-search"></i>
               <span>Tìm kiếm</span>
             </button>
+            <button
+              data-route="core-hr"
+              class="menu-item"
+              title="Hồ sơ nhân viên (Core HR)"
+            >
+              <i class="fas fa-id-card"></i>
+              <span>Hồ sơ nhân viên</span>
+            </button>
+            <button
+              data-route="directory"
+              class="menu-item"
+              title="Danh bạ nhân viên"
+            >
+              <i class="fas fa-address-book"></i>
+              <span>Danh bạ</span>
+            </button>
           </div>
 
           <!-- Tổ chức -->
@@ -110,6 +126,14 @@
             >
               <i class="fas fa-briefcase"></i>
               <span>Vị trí</span>
+            </button>
+            <button
+              data-route="org-chart"
+              class="menu-item"
+              title="Sơ đồ tổ chức"
+            >
+              <i class="fas fa-project-diagram"></i>
+              <span>Sơ đồ tổ chức</span>
             </button>
           </div>
 
@@ -197,11 +221,11 @@
             </button>
           </div>
 
-          <!-- Báo cáo & Thông báo -->
+          <!-- Báo cáo -->
           <div class="menu-section">
             <div class="menu-section-title">
               <i class="fas fa-chart-pie"></i>
-              <span>Báo cáo • Thông báo</span>
+              <span>Báo cáo</span>
             </div>
             <button
               data-route="reports"
@@ -210,14 +234,6 @@
             >
               <i class="fas fa-chart-bar"></i>
               <span>Báo cáo</span>
-            </button>
-            <button
-              data-route="notifications"
-              class="menu-item"
-              title="Trung tâm thông báo"
-            >
-              <i class="fas fa-bell"></i>
-              <span>Thông báo</span>
             </button>
           </div>
 
@@ -231,12 +247,39 @@
       <main class="content">
         <header class="topbar">
           <h1 id="pageTitle">Dashboard</h1>
-          <div style="display: flex; gap: 8px">
-            <button id="themeToggle" class="secondary">Toggle Theme</button>
+          <div style="display: flex; gap: 8px; align-items: center">
+            <button id="notifyToggle" class="secondary" title="Thông báo">
+              <i class="fas fa-bell"></i>
+              <span
+                id="notifyBadge"
+                class="badge danger"
+                style="display: none; margin-left: 8px"
+              >
+                <span class="dot"></span><span id="notifyCount">0</span>
+              </span>
+            </button>
+            <button id="themeToggle" class="secondary" title="Đổi theme">
+              <i class="fas fa-moon"></i>
+            </button>
           </div>
         </header>
         <section id="view" class="view"></section>
       </main>
+    </div>
+    <!-- Floating notification panel (toggled by bell) -->
+    <div id="notifyPanel" class="notify-panel" style="display: none">
+      <div class="notify-header">
+        <span><i class="fas fa-bell"></i> Thông báo</span>
+        <div class="notify-actions">
+          <button id="notifyMarkAll" class="secondary" title="Đánh dấu đã đọc">
+            <i class="fas fa-check-double"></i>
+          </button>
+          <button id="notifyClose" class="secondary" title="Đóng">
+            <i class="fas fa-times"></i>
+          </button>
+        </div>
+      </div>
+      <div id="notifyList" class="notify-list"></div>
     </div>
     <script type="module" src="app.js"></script>
   </body>

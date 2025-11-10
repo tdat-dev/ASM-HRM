@@ -1,5 +1,11 @@
 import { EmployeeDb } from "./employee-db-module.js";
+import { escapeHTML } from "../utils/dom.js";
 
+/**
+ * Tính toán KPIs (Key Performance Indicators) từ danh sách nhân viên
+ * @param {Array} employees - Danh sách nhân viên
+ * @returns {Object} KPIs đã tính toán
+ */
 function computeKpis(employees) {
   const byDept = {};
   for (const e of employees) {
@@ -36,10 +42,13 @@ export const ReportsModule = {
 
     const employees = await EmployeeDb.getAllEmployees();
     const resultEl = wrap.querySelector("#reportResult");
+    
     const run = () => {
       const type = wrap.querySelector("#reportType").value;
+      
       if (type === "dept") {
         const kpis = computeKpis(employees);
+        // Escape tất cả dữ liệu động
         resultEl.innerHTML = `
           <table class="table">
             <thead><tr><th>Phòng ban</th><th>Số NV</th><th>Tỷ trọng</th></tr></thead>
@@ -47,7 +56,11 @@ export const ReportsModule = {
               ${kpis.deptShare
                 .map(
                   (r) =>
-                    `<tr><td>${r.dept}</td><td>${r.count}</td><td>${r.percent}%</td></tr>`
+                    `<tr>
+                      <td>${escapeHTML(String(r.dept))}</td>
+                      <td>${r.count}</td>
+                      <td>${r.percent}%</td>
+                    </tr>`
                 )
                 .join("")}
             </tbody>
@@ -58,6 +71,7 @@ export const ReportsModule = {
           name: e.name,
           total: (Number(e.salary || 0) + Number(e.bonus || 0) - Number(e.deduction || 0)),
         }));
+        // Escape tất cả dữ liệu động
         resultEl.innerHTML = `
           <table class="table">
             <thead><tr><th>Nhân viên</th><th>Chi phí ước tính</th></tr></thead>
@@ -65,7 +79,10 @@ export const ReportsModule = {
               ${rows
                 .map(
                   (r) =>
-                    `<tr><td>${r.name}</td><td>${r.total.toLocaleString()} VNĐ</td></tr>`
+                    `<tr>
+                      <td>${escapeHTML(r.name || "")}</td>
+                      <td>${r.total.toLocaleString()} VNĐ</td>
+                    </tr>`
                 )
                 .join("")}
             </tbody>
@@ -73,10 +90,8 @@ export const ReportsModule = {
         `;
       }
     };
+    
     wrap.querySelector("#runReport").addEventListener("click", run);
     run();
   },
 };
-
-
-
