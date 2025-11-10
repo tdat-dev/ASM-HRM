@@ -13,9 +13,48 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # Lấy toàn bộ lịch sử git để so sánh chính xác
+
+      - name: Get changed files
+        id: changed-files
+        uses: tj-actions/changed-files@v41
+        with:
+          # Chỉ lấy file đã thay đổi, thêm mới, sửa đổi
+          files: |
+            **/*.php
+            **/*.js
+            **/*.html
+            **/*.css
+            **/*.json
+            **/*.sql
+          # Bỏ qua các file không cần
+          files_ignore: |
+            **/.git*
+            **/node_modules/**
+            **/.vscode/**
+            **/README.md
+            **/docs/**
+          separator: ","
+
+      - name: Display changed files
+        if: steps.changed-files.outputs.any_changed == 'true'
+        run: |
+          echo "📝 Changed files count: ${{ steps.changed-files.outputs.all_changed_files_count }}"
+          echo "📂 Changed files:"
+          for file in $(echo "${{ steps.changed-files.outputs.all_changed_files }}" | tr ',' '\n'); do
+            echo "  - $file"
+          done
+
+      - name: Skip deployment if no files changed
+        if: steps.changed-files.outputs.any_changed == 'false'
+        run: |
+          echo "⏭️ No relevant files changed, skipping deployment"
+          exit 0
 
       - name: Create .env file
+        if: steps.changed-files.outputs.any_changed == 'true'
         run: |
           cat > .env << EOF
           # Database Configuration - LOCALHOST
@@ -34,14 +73,17 @@ jobs:
           DB_CHARSET=utf8mb4
           EOF
 
-      - name: Deploy via FTP
-        uses: SamKirkland/FTP-Deploy-Action@4.3.3
+      - name: Deploy via FTP (Changed files only)
+        if: steps.changed-files.outputs.any_changed == 'true'
+        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
         with:
           server: ${{ secrets.FTP_SERVER }}
           username: ${{ secrets.FTP_USERNAME }}
           password: ${{ secrets.FTP_PASSWORD }}
           server-dir: /htdocs/
-          # Loại trừ các file không cần deploy
+          protocol: ftps
+          port: 21
+          # Tối ưu: chỉ sync những file thay đổi
           exclude: |
             **/.git*
             **/.git*/**
@@ -50,3 +92,9 @@ jobs:
             **/.env.example
             **/README.md
             **/docs/**
+
+      - name: Deployment summary
+        if: steps.changed-files.outputs.any_changed == 'true'
+        run: |
+          echo "✅ Deployment completed!"
+          echo "📊 Total files deployed: ${{ steps.changed-files.outputs.all_changed_files_count }}"
