@@ -1,6 +1,24 @@
 // DOM utilities - Các hàm tiện ích để tạo và thao tác DOM
 
 /**
+ * Escape HTML để chống XSS (Cross-Site Scripting)
+ * Chuyển đổi các ký tự đặc biệt HTML thành entities
+ * @param {string} text - Chuỗi cần escape
+ * @returns {string} Chuỗi đã được escape an toàn
+ */
+export function escapeHTML(text) {
+  if (text == null) return "";
+  const map = {
+    "&": "&amp;",
+    "<": "&lt;",
+    ">": "&gt;",
+    '"': "&quot;",
+    "'": "&#039;",
+  };
+  return String(text).replace(/[&<>"']/g, (m) => map[m]);
+}
+
+/**
  * Tạo phần tử HTML với thuộc tính và children
  * @param {string} tagName - Tên thẻ HTML (vd: "div", "button")
  * @param {Object} attributes - Thuộc tính của phần tử (vd: { id: "btn1", className: "primary" })
@@ -51,10 +69,10 @@ export function createElement(tagName, attributes = {}, children = []) {
  * Hiển thị thông báo (alert) trong container
  * @param {HTMLElement} container - Phần tử HTML chứa thông báo
  * @param {string} alertType - Loại thông báo: "success", "error", "warning"
- * @param {string} message - Nội dung thông báo
+ * @param {string} message - Nội dung thông báo (sẽ được escape tự động)
  */
 export function showAlert(container, alertType, message) {
-  container.innerHTML = `<div class="alert ${alertType}">${message}</div>`;
+  container.innerHTML = `<div class="alert ${alertType}">${escapeHTML(message)}</div>`;
 }
 
 /**
@@ -62,23 +80,52 @@ export function showAlert(container, alertType, message) {
  * @param {HTMLElement} container - Phần tử chứa bảng
  * @param {Array} columns - Mảng các cột: [{ header: "Tên cột", cell: (row) => row.field }]
  * @param {Array} rows - Mảng dữ liệu hàng
+ * @param {boolean} escapeData - Có escape dữ liệu tự động không (mặc định: true để chống XSS)
  */
-export function renderTable(container, columns, rows) {
-  // Tạo phần header (thead)
+export function renderTable(container, columns, rows, escapeData = true) {
+  // Tạo phần header (thead) - header luôn được escape
   const tableHeader = `<thead><tr>${columns
-    .map((column) => `<th>${column.header}</th>`)
+    .map((column) => `<th>${escapeHTML(column.header)}</th>`)
     .join("")}</tr></thead>`;
 
   // Tạo phần body (tbody)
+  // Lưu ý: cell function có thể trả về HTML, nên không tự động escape
+  // Developer phải tự escape trong cell function nếu cần
   const tableBody = `<tbody>${rows
     .map(
       (row) =>
         `<tr>${columns
-          .map((column) => `<td>${column.cell(row)}</td>`)
+          .map((column) => {
+            const cellContent = column.cell(row);
+            // Nếu cell trả về string thuần, escape nó
+            // Nếu trả về HTML (có tags), giữ nguyên (nhưng phải đảm bảo an toàn)
+            return `<td>${escapeData && typeof cellContent === "string" ? escapeHTML(cellContent) : cellContent}</td>`;
+          })
           .join("")}</tr>`
     )
     .join("")}</tbody>`;
 
   // Gộp thành bảng hoàn chỉnh
   container.innerHTML = `<table class="table">${tableHeader}${tableBody}</table>`;
+}
+
+/**
+ * Chuẩn hóa và format tiền tệ VND theo locale vi-VN
+ * - Chấp nhận string chứa ký tự, sẽ lọc số trước khi format
+ * - Mặc định không hiển thị phần thập phân .00
+ * @param {number|string} amount
+ * @param {Intl.NumberFormatOptions} options
+ * @returns {string}
+ */
+export function formatVND(amount, options = {}) {
+  if (amount == null) return "0 VNĐ";
+  const cleaned =
+    typeof amount === "string" ? amount.replace(/[^0-9.-]/g, "") : amount;
+  const number = Number(cleaned);
+  const safe = Number.isFinite(number) ? number : 0;
+  const nf = new Intl.NumberFormat("vi-VN", {
+    maximumFractionDigits: 0,
+    ...options,
+  });
+  return `${nf.format(safe)} VNĐ`;
 }

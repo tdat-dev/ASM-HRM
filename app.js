@@ -22,6 +22,13 @@ const pageTitleEl = document.getElementById("pageTitle");
 const logoutBtn = document.getElementById("logoutBtn");
 const appEl = document.getElementById("app");
 const themeToggleBtn = document.getElementById("themeToggle");
+const notifyToggleBtn = document.getElementById("notifyToggle");
+const notifyBadge = document.getElementById("notifyBadge");
+const notifyCountEl = document.getElementById("notifyCount");
+const notifyPanel = document.getElementById("notifyPanel");
+const notifyList = document.getElementById("notifyList");
+const notifyClose = document.getElementById("notifyClose");
+const notifyMarkAll = document.getElementById("notifyMarkAll");
 const sidebarToggleBtn = document.getElementById("sidebarToggle");
 const sidebar = document.querySelector(".sidebar");
 
@@ -37,6 +44,17 @@ function applyTheme(theme) {
     root.classList.remove("theme-dark");
   }
   localStorage.setItem(THEME_KEY, theme);
+  // Cập nhật icon trên nút theme (trăng / mặt trời)
+  if (themeToggleBtn) {
+    themeToggleBtn.innerHTML =
+      theme === "dark"
+        ? '<i class="fas fa-sun"></i>'
+        : '<i class="fas fa-moon"></i>';
+    themeToggleBtn.setAttribute(
+      "title",
+      theme === "dark" ? "Chuyển sang Light" : "Chuyển sang Dark"
+    );
+  }
 }
 
 // Toggle sidebar collapsed/expanded
@@ -63,13 +81,11 @@ function initTheme() {
   const theme = saved || (prefersDark ? "dark" : "light");
   applyTheme(theme);
   if (themeToggleBtn) {
-    themeToggleBtn.textContent = theme === "dark" ? "Light Mode" : "Dark Mode";
     themeToggleBtn.addEventListener("click", () => {
       const next = document.documentElement.classList.contains("theme-dark")
         ? "light"
         : "dark";
       applyTheme(next);
-      themeToggleBtn.textContent = next === "dark" ? "Light Mode" : "Dark Mode";
     });
   }
 
@@ -77,6 +93,65 @@ function initTheme() {
   loadSidebarState();
   if (sidebarToggleBtn) {
     sidebarToggleBtn.addEventListener("click", toggleSidebar);
+  }
+}
+
+// Cập nhật badge thông báo (số chưa đọc)
+function updateNotificationBadge() {
+  try {
+    const raw = localStorage.getItem("hrm_notifications") || "[]";
+    const items = JSON.parse(raw);
+    const unread = Array.isArray(items) ? items.filter((n) => !n.read).length : 0;
+    if (unread > 0) {
+      if (notifyBadge) notifyBadge.style.display = "inline-flex";
+      if (notifyCountEl) notifyCountEl.textContent = String(unread);
+    } else {
+      if (notifyBadge) notifyBadge.style.display = "none";
+    }
+  } catch {
+    if (notifyBadge) notifyBadge.style.display = "none";
+  }
+}
+
+function renderNotifyPanel() {
+  try {
+    const raw = localStorage.getItem("hrm_notifications") || "[]";
+    const items = JSON.parse(raw);
+    if (!notifyList) return;
+    if (!Array.isArray(items) || items.length === 0) {
+      notifyList.innerHTML = `<div class="muted">Không có thông báo nào.</div>`;
+      return;
+    }
+    notifyList.innerHTML = items
+      .slice()
+      .sort((a, b) => (b.createdAt || 0).localeCompare?.(a.createdAt || 0) || 0)
+      .map(
+        (n) => `
+        <div class="notify-item ${n.read ? "" : "unread"}">
+          <div style="display:flex; justify-content: space-between; gap:8px; align-items: center;">
+            <div style="font-weight:700;">${n.title || "Thông báo"}</div>
+            <button class="secondary" data-id="${n.id}" data-action="mark" title="Đánh dấu đã đọc"><i class="fas fa-check"></i></button>
+          </div>
+          <div style="margin-top:6px;">${n.message || ""}</div>
+          <div class="meta">${new Date(n.createdAt || Date.now()).toLocaleString()}</div>
+        </div>
+      `
+      )
+      .join("");
+    // bind buttons
+    notifyList.querySelectorAll("button[data-action='mark']").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const id = Number(btn.getAttribute("data-id"));
+        const arr = JSON.parse(localStorage.getItem("hrm_notifications") || "[]");
+        const item = arr.find((x) => x.id === id);
+        if (item) item.read = true;
+        localStorage.setItem("hrm_notifications", JSON.stringify(arr));
+        updateNotificationBadge();
+        renderNotifyPanel();
+      });
+    });
+  } catch (e) {
+    if (notifyList) notifyList.innerHTML = `<div class="muted">Không thể tải thông báo.</div>`;
   }
 }
 
@@ -353,6 +428,39 @@ async function init() {
     await AuthModule.logout();
     showAuth();
   });
+
+  // Nút chuông thông báo → mở panel nổi
+  if (notifyToggleBtn) {
+    notifyToggleBtn.addEventListener("click", async () => {
+      if (!notifyPanel) return;
+      const visible = notifyPanel.style.display !== "none";
+      if (visible) {
+        notifyPanel.style.display = "none";
+      } else {
+        renderNotifyPanel();
+        notifyPanel.style.display = "block";
+      }
+    });
+  }
+  if (notifyClose) {
+    notifyClose.addEventListener("click", () => {
+      if (notifyPanel) notifyPanel.style.display = "none";
+    });
+  }
+  if (notifyMarkAll) {
+    notifyMarkAll.addEventListener("click", () => {
+      try {
+        const arr = JSON.parse(localStorage.getItem("hrm_notifications") || "[]");
+        const next = Array.isArray(arr) ? arr.map((n) => ({ ...n, read: true })) : [];
+        localStorage.setItem("hrm_notifications", JSON.stringify(next));
+        updateNotificationBadge();
+        renderNotifyPanel();
+      } catch {}
+    });
+  }
+  // Cập nhật badge khởi tạo + theo chu kỳ
+  updateNotificationBadge();
+  setInterval(updateNotificationBadge, 5000);
 
   // Mặc định hiển thị màn hình login trước
   showAuth();
