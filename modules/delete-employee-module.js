@@ -28,16 +28,21 @@ export const DeleteEmployeeModule = {
         const area = document.getElementById("delArea");
         const { ok, errors } = validateEmployeeId(id);
         if (!ok) {
-          area.innerHTML = `<div class="alert error">${errors.join(
-            "<br>"
-          )}</div>`;
+          area.innerHTML = `<div class="alert error">${errors
+            .map((e) => e.replace(/</g, "&lt;").replace(/>/g, "&gt;"))
+            .join("<br>")}</div>`;
           return;
         }
         if (!emp) {
           area.innerHTML = '<div class="alert error">Không tìm thấy</div>';
           return;
         }
-        area.innerHTML = `<p>Bạn có chắc muốn xóa: <strong>${emp.name}</strong>?</p><button id="confirmDel" class="primary">Xóa</button>`;
+        area.innerHTML = `<p>Bạn có chắc muốn xóa: <strong>${(emp.name || "")
+          .replace(/&/g, "&amp;")
+          .replace(/</g, "&lt;")
+          .replace(/>/g, "&gt;")
+          .replace(/"/g, "&quot;")
+          .replace(/'/g, "&#039;")}</strong>?</p><button id="confirmDel" class="primary">Xóa</button>`;
         document
           .getElementById("confirmDel")
           .addEventListener("click", async () => {
@@ -46,9 +51,13 @@ export const DeleteEmployeeModule = {
                 await employeeAPI.delete(emp.id);
                 area.innerHTML = '<div class="alert success">Đã xóa</div>';
               } catch (error) {
-                area.innerHTML = `<div class="alert error">${
-                  error.message || "Có lỗi xảy ra"
-                }</div>`;
+                const msg = (error.message || "Có lỗi xảy ra")
+                  .replace(/&/g, "&amp;")
+                  .replace(/</g, "&lt;")
+                  .replace(/>/g, "&gt;")
+                  .replace(/"/g, "&quot;")
+                  .replace(/'/g, "&#039;");
+                area.innerHTML = `<div class="alert error">${msg}</div>`;
               }
             }
           });

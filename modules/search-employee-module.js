@@ -16,7 +16,7 @@ export const SearchEmployeeModule = {
 				<div><label>Tên (regex)</label><input id="sName" placeholder="Ví dụ: ^N|Chi$" /></div>
 				<div><label>Phòng ban</label>
 					<select id="sDept"><option value="">Tất cả</option>${departments
-            .map((d) => `<option value="${d.id}">${d.name}</option>`)
+            .map((d) => `<option value="${d.id}">${escapeHTML(d.name || "")}</option>`)
             .join("")}</select>
 				</div>
 				<div style="display:flex;gap:8px;">
