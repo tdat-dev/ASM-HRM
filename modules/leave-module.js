@@ -113,7 +113,7 @@ export const LeaveModule = {
           )
           .join("");
       } catch (error) {
-        body.innerHTML = `<tr><td colspan="5" class="alert error">${error.message}</td></tr>`;
+        body.innerHTML = `<tr><td colspan="5" class="alert error">${escapeHTML(error.message || "Có lỗi xảy ra")}</td></tr>`;
       }
     };
     await render();

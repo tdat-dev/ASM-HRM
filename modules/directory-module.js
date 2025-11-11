@@ -152,6 +152,10 @@ export const DirectoryModule = {
       const fragment = document.createDocumentFragment();
       items.forEach((employee) => {
         const avatar = employee.profile_avatar || DEFAULT_AVATAR;
+        const safeAvatar =
+          typeof avatar === "string" && (/^data:image\//i.test(avatar) || /^https?:\/\//i.test(avatar))
+            ? avatar
+            : DEFAULT_AVATAR;
         const skills = employee.profile_skills || "";
         const card = document.createElement("button");
         card.type = "button";
@@ -162,7 +166,7 @@ export const DirectoryModule = {
         card.setAttribute("data-id", String(employee.id));
         card.innerHTML = `
           <div class="directory-card-body">
-            <img class="directory-avatar" src="${avatar}" alt="" />
+            <img class="directory-avatar" src="${safeAvatar}" alt="" />
             <div>
               <div><span class="id-badge">#${
                 employee.id

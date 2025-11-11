@@ -8,13 +8,9 @@ export const EmployeeDb = {
    * Lấy tất cả nhân viên
    */
   async getAllEmployees() {
-    try {
-      const result = await employeeAPI.getAll();
-      const employees = result.data || [];
-      return employees;
-    } catch (error) {
-      throw error;
-    }
+    const result = await employeeAPI.getAll();
+    const employees = result.data || [];
+    return employees;
   },
 
   /**
@@ -30,13 +26,6 @@ export const EmployeeDb = {
   },
 
   /**
-   * Lưu danh sách nhân viên - không cần với API
-   */
-  async saveEmployees(employeesList) {
-    // API tự động lưu khi create/update/delete
-  },
-
-  /**
    * Lọc nhân viên theo điều kiện
    */
   async filterEmployees(filterFunction) {
@@ -44,9 +33,7 @@ export const EmployeeDb = {
     return employees.filter(filterFunction);
   },
 
-  /**
-   * Sắp xếp nhân viên
-   */
+  // Sắp xếp nhân viên
   async sortEmployees(compareFunction) {
     const employees = await this.getAllEmployees();
     return [...employees].sort(compareFunction);
@@ -61,13 +48,6 @@ export const EmployeeDb = {
   },
 
   /**
-   * Lưu danh sách phòng ban - không cần với API
-   */
-  async saveDepartments(departmentsList) {
-    // API tự động lưu khi create/update/delete
-  },
-
-  /**
    * Lấy tất cả vị trí
    */
   async getAllPositions() {
@@ -75,10 +55,5 @@ export const EmployeeDb = {
     return result.data || [];
   },
 
-  /**
-   * Lưu danh sách vị trí - không cần với API
-   */
-  async savePositions(positionsList) {
-    // API tự động lưu khi create/update/delete
-  },
+  // (save* methods removed - handled by dedicated API endpoints)
 };

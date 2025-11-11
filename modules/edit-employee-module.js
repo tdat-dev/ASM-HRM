@@ -5,7 +5,7 @@ import {
   validateDepartmentExists,
   validatePositionExists,
 } from "../utils/validators.js";
-import { showAlert } from "../utils/dom.js";
+import { showAlert, escapeHTML } from "../utils/dom.js";
 
 export const EditEmployeeModule = {
   // Render quy trình tìm nhân viên theo tên và cập nhật thông tin chi tiết
@@ -52,16 +52,14 @@ export const EditEmployeeModule = {
       const positions = await EmployeeDb.getAllPositions();
       area.innerHTML = `
 				<form id="editForm">
-					<div><label>Họ tên</label><input id="eName" value="${
-            emp.name
-          }" required /></div>
+					<div><label>Họ tên</label><input id="eName" value="${escapeHTML(emp.name || "")}" required /></div>
 					<div><label>Phòng ban</label>
 						<select id="eDept">${departments
               .map(
                 (department) =>
                   `<option ${
                     department.id === emp.department_id ? "selected" : ""
-                  } value="${department.id}">${department.name}</option>`
+                  } value="${department.id}">${escapeHTML(department.name || "")}</option>`
               )
               .join("")}</select>
 					</div>
@@ -71,16 +69,12 @@ export const EditEmployeeModule = {
                 (position) =>
                   `<option ${
                     position.id === emp.position_id ? "selected" : ""
-                  } value="${position.id}">${position.title}</option>`
+                  } value="${position.id}">${escapeHTML(position.title || "")}</option>`
               )
               .join("")}</select>
 					</div>
-					<div><label>Lương (VNĐ)</label><input id="eSalary" type="number" min="0" step="1" value="${
-            emp.salary
-          }" placeholder="Ví dụ: 10000000" required /></div>
-					<div><label>Ngày vào làm</label><input id="eHire" type="date" value="${
-            emp.hire_date
-          }" required /></div>
+					<div><label>Lương (VNĐ)</label><input id="eSalary" type="number" min="0" step="1" value="${String(emp.salary ?? "")}" placeholder="Ví dụ: 10000000" required /></div>
+					<div><label>Ngày vào làm</label><input id="eHire" type="date" value="${escapeHTML(emp.hire_date || "")}" required /></div>
 					<button class="primary">Lưu</button>
 					<div id="editAlert"></div>
 				</form>

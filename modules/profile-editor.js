@@ -14,7 +14,6 @@ export function createProfileEditor(rootEl, { showExport = true } = {}) {
         <img class="profile-avatar-img" alt="Avatar" />
         <label class="profile-upload">
           <span class="secondary profile-upload-btn"><i class="fas fa-upload"></i> Chọn ảnh</span>
-          <input type="file" class="profile-avatar-input" accept="image/*" />
         </label>
       </div>
       <div class="profile-sections">
@@ -75,10 +74,13 @@ export function createProfileEditor(rootEl, { showExport = true } = {}) {
 
   const editorEl = rootEl.querySelector(".profile-editor");
   const avatarImg = editorEl.querySelector(".profile-avatar-img");
-  const avatarInput = editorEl.querySelector(".profile-avatar-input");
   const bankNameInput = editorEl.querySelector('[data-field="bankName"]');
-  const bankAccountNameInput = editorEl.querySelector('[data-field="accountName"]');
-  const bankAccountNumberInput = editorEl.querySelector('[data-field="accountNumber"]');
+  const bankAccountNameInput = editorEl.querySelector(
+    '[data-field="accountName"]'
+  );
+  const bankAccountNumberInput = editorEl.querySelector(
+    '[data-field="accountNumber"]'
+  );
   const skillsInput = editorEl.querySelector('[data-field="skills"]');
   const saveBtn = editorEl.querySelector(".profile-save-btn");
   const exportBtn = editorEl.querySelector(".profile-export-btn");
@@ -135,8 +137,12 @@ export function createProfileEditor(rootEl, { showExport = true } = {}) {
   function renderList(arrName) {
     const container = listContainers[arrName];
     if (!container) return;
-    const inputs = editorEl.querySelectorAll(`.profile-list[data-list="${arrName}"] input`);
-    inputs.forEach((input) => input.removeEventListener("input", input._listener));
+    const inputs = editorEl.querySelectorAll(
+      `.profile-list[data-list="${arrName}"] input`
+    );
+    inputs.forEach((input) =>
+      input.removeEventListener("input", input._listener)
+    );
     container.innerHTML = "";
     const arr = state.profile[arrName];
     arr.forEach((item, idx) => {
@@ -184,46 +190,42 @@ export function createProfileEditor(rootEl, { showExport = true } = {}) {
     renderList("customFields");
   }
 
-  editorEl
-    .querySelectorAll(".profile-add-btn")
-    .forEach((btn) =>
-      btn.addEventListener("click", () => {
-        const arrName = btn.getAttribute("data-add");
-        switch (arrName) {
-          case "emergency":
-          case "emergencyContacts":
-            state.profile.emergencyContacts.push({ name: "", phone: "", relation: "" });
-            renderList("emergencyContacts");
-            break;
-          case "dependents":
-            state.profile.dependents.push({ name: "", relation: "", dob: "" });
-            renderList("dependents");
-            break;
-          case "education":
-            state.profile.education.push({ title: "", school: "", year: "" });
-            renderList("education");
-            break;
-          case "promotions":
-            state.profile.promotions.push({ title: "", date: "", note: "" });
-            renderList("promotions");
-            break;
-          case "customFields":
-            state.profile.customFields.push({ key: "", value: "" });
-            renderList("customFields");
-            break;
-          default:
-            break;
-        }
-      })
-    );
+  editorEl.querySelectorAll(".profile-add-btn").forEach((btn) =>
+    btn.addEventListener("click", () => {
+      const arrName = btn.getAttribute("data-add");
+      switch (arrName) {
+        case "emergency":
+        case "emergencyContacts":
+          state.profile.emergencyContacts.push({
+            name: "",
+            phone: "",
+            relation: "",
+          });
+          renderList("emergencyContacts");
+          break;
+        case "dependents":
+          state.profile.dependents.push({ name: "", relation: "", dob: "" });
+          renderList("dependents");
+          break;
+        case "education":
+          state.profile.education.push({ title: "", school: "", year: "" });
+          renderList("education");
+          break;
+        case "promotions":
+          state.profile.promotions.push({ title: "", date: "", note: "" });
+          renderList("promotions");
+          break;
+        case "customFields":
+          state.profile.customFields.push({ key: "", value: "" });
+          renderList("customFields");
+          break;
+        default:
+          break;
+      }
+    })
+  );
 
-  avatarInput.addEventListener("change", async () => {
-    const file = avatarInput.files?.[0];
-    if (!file) return;
-    const base64 = await fileToBase64(file);
-    state.profile.avatar = base64;
-    avatarImg.src = base64;
-  });
+  // Upload input removed per request; "Chọn ảnh" button is visual only
 
   bankNameInput.addEventListener("input", () => {
     state.profile.bank.bankName = bankNameInput.value;
@@ -242,7 +244,9 @@ export function createProfileEditor(rootEl, { showExport = true } = {}) {
     await Promise.resolve(handlers.onSave(state.employee, getProfile()));
   });
   exportBtn.addEventListener("click", async () => {
-    await Promise.resolve(handlers.onExport(state.employee, getPrintableHtml()));
+    await Promise.resolve(
+      handlers.onExport(state.employee, getPrintableHtml())
+    );
   });
 
   function getProfile() {
@@ -272,26 +276,59 @@ export function createProfileEditor(rootEl, { showExport = true } = {}) {
         td, th { border:1px solid #ddd; padding:8px; text-align:left; }
       </style>
       </head><body>
-        <h1>Hồ sơ nhân viên #${escapeHTML(String(employee.id || ""))} - ${escapeHTML(employee.name || "")}</h1>
+        <h1>Hồ sơ nhân viên #${escapeHTML(
+          String(employee.id || "")
+        )} - ${escapeHTML(employee.name || "")}</h1>
         <div class="row">
           <img src="${profile.avatar || DEFAULT_AVATAR}" alt="avatar" />
           <div>
-            <div><strong>Phòng ban:</strong> ${escapeHTML(employee.departmentName || "")}</div>
-            <div><strong>Vị trí:</strong> ${escapeHTML(employee.positionTitle || "")}</div>
-            <div><strong>Kỹ năng:</strong> ${escapeHTML(profile.skills || "")}</div>
+            <div><strong>Phòng ban:</strong> ${escapeHTML(
+              employee.departmentName || ""
+            )}</div>
+            <div><strong>Vị trí:</strong> ${escapeHTML(
+              employee.positionTitle || ""
+            )}</div>
+            <div><strong>Kỹ năng:</strong> ${escapeHTML(
+              profile.skills || ""
+            )}</div>
           </div>
         </div>
         <div class="card">
           <h3>Ngân hàng</h3>
-          <div><strong>Ngân hàng:</strong> ${escapeHTML(profile.bank.bankName)}</div>
-          <div><strong>Chủ TK:</strong> ${escapeHTML(profile.bank.accountName)}</div>
-          <div><strong>Số TK:</strong> ${escapeHTML(profile.bank.accountNumber)}</div>
+          <div><strong>Ngân hàng:</strong> ${escapeHTML(
+            profile.bank.bankName
+          )}</div>
+          <div><strong>Chủ TK:</strong> ${escapeHTML(
+            profile.bank.accountName
+          )}</div>
+          <div><strong>Số TK:</strong> ${escapeHTML(
+            profile.bank.accountNumber
+          )}</div>
         </div>
-        ${renderTableSection("Liên hệ khẩn cấp", profile.emergencyContacts, ["name", "relation", "phone"])}
-        ${renderTableSection("Người phụ thuộc", profile.dependents, ["name", "relation", "dob"])}
-        ${renderTableSection("Học vấn / Chứng chỉ", profile.education, ["title", "school", "year"])}
-        ${renderTableSection("Lịch sử công tác / Thăng tiến", profile.promotions, ["title", "date", "note"])}
-        ${renderTableSection("Custom fields", profile.customFields, ["key", "value"])}
+        ${renderTableSection("Liên hệ khẩn cấp", profile.emergencyContacts, [
+          "name",
+          "relation",
+          "phone",
+        ])}
+        ${renderTableSection("Người phụ thuộc", profile.dependents, [
+          "name",
+          "relation",
+          "dob",
+        ])}
+        ${renderTableSection("Học vấn / Chứng chỉ", profile.education, [
+          "title",
+          "school",
+          "year",
+        ])}
+        ${renderTableSection(
+          "Lịch sử công tác / Thăng tiến",
+          profile.promotions,
+          ["title", "date", "note"]
+        )}
+        ${renderTableSection("Custom fields", profile.customFields, [
+          "key",
+          "value",
+        ])}
       <script>window.onload = () => window.print();</script>
       </body></html>
     `;
@@ -305,7 +342,9 @@ export function createProfileEditor(rootEl, { showExport = true } = {}) {
     const body = rows
       .map(
         (row) =>
-          `<tr>${keys.map((key) => `<td>${escapeHTML(row[key] || "")}</td>`).join("")}</tr>`
+          `<tr>${keys
+            .map((key) => `<td>${escapeHTML(row[key] || "")}</td>`)
+            .join("")}</tr>`
       )
       .join("");
     return `
@@ -343,4 +382,3 @@ export function createProfileEditor(rootEl, { showExport = true } = {}) {
     },
   };
 }
-

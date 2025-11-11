@@ -19,6 +19,7 @@ import { NotificationsModule } from "./modules/notifications-module.js";
 import { CoreHrModule } from "./modules/core-hr-module.js";
 import { DirectoryModule } from "./modules/directory-module.js";
 import { OrgChartModule } from "./modules/org-chart-module.js";
+import { escapeHTML } from "./utils/dom.js";
 
 const viewEl = document.getElementById("view");
 const pageTitleEl = document.getElementById("pageTitle");
@@ -152,12 +153,12 @@ function renderNotifyPanel() {
         (n) => `
         <div class="notify-item ${n.read ? "" : "unread"}">
           <div style="display:flex; justify-content: space-between; gap:8px; align-items: center;">
-            <div style="font-weight:700;">${n.title || "Thông báo"}</div>
-            <button class="secondary" data-id="${
-              n.id
-            }" data-action="mark" title="Đánh dấu đã đọc"><i class="fas fa-check"></i></button>
+            <div style="font-weight:700;">${escapeHTML(n.title || "Thông báo")}</div>
+            <button class="secondary" data-id="${String(
+              Number(n.id) || ""
+            )}" data-action="mark" title="Đánh dấu đã đọc"><i class="fas fa-check"></i></button>
           </div>
-          <div style="margin-top:6px;">${n.message || ""}</div>
+          <div style="margin-top:6px;">${escapeHTML(n.message || "")}</div>
           <div class="meta">${new Date(
             n.createdAt || Date.now()
           ).toLocaleString()}</div>
@@ -379,11 +380,11 @@ const routes = {
                   <td><span style="background: var(--primary); color: white; padding: 4px 8px; border-radius: 6px; font-weight: 600; font-size: 12px;">#${
                     emp.id
                   }</span></td>
-                  <td><strong>${emp.name}</strong></td>
-                  <td>${dept}</td>
-                  <td>${pos}</td>
+                  <td><strong>${escapeHTML(emp.name || "")}</strong></td>
+                  <td>${escapeHTML(dept)}</td>
+                  <td>${escapeHTML(pos)}</td>
                   <td>${(emp.salary || 0).toLocaleString()} VNĐ</td>
-                  <td>${emp.hireDate || "-"}</td>
+                  <td>${escapeHTML(emp.hireDate || "-")}</td>
                 </tr>
               `;
               })
@@ -401,7 +402,7 @@ const routes = {
         return;
       }
       // Lỗi khác, hiển thị thông báo chi tiết
-      const errorMessage = error.message || "Đã xảy ra lỗi không xác định";
+      const errorMessage = escapeHTML(error.message || "Đã xảy ra lỗi không xác định");
       viewEl.innerHTML = `
         <div class="card" style="text-align: center; padding: 40px;">
           <div class="alert error">
@@ -414,11 +415,15 @@ const routes = {
             <br>• Kết nối database có ổn định không?
             <br>• Dữ liệu có tồn tại trong database không?
           </p>
-          <button onclick="location.reload()" class="primary" style="margin-top: 20px;">
+          <button id="reloadBtn" class="primary" style="margin-top: 20px;">
             <i class="fas fa-sync-alt"></i> Tải lại trang
           </button>
         </div>
       `;
+      const reloadBtn = document.getElementById("reloadBtn");
+      if (reloadBtn) {
+        reloadBtn.addEventListener("click", () => location.reload());
+      }
     }
   },
   "employees-add": () => AddEmployeeModule.mount(viewEl, pageTitleEl),
@@ -899,7 +904,8 @@ function showAuth() {
         await navigate("dashboard");
       }, 500);
     } catch (err) {
-      alertEl.innerHTML = `<div class="alert error"><i class="fas fa-times-circle"></i> ${err.message}</div>`;
+      alertEl.innerHTML = `<div class="alert error"><i class="fas fa-times-circle"></i> ${escapeHTML(err.message || "Đăng nhập thất bại")}</div>`;
+      alertEl.innerHTML = `<div class="alert error"><i class="fas fa-times-circle"></i> ${escapeHTML(err.message || "Đăng nhập thất bại")}</div>`;
       authSubmit.disabled = false;
       authSubmit.classList.remove("loading");
       authSubmit.innerHTML = originalText;

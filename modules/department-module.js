@@ -1,6 +1,6 @@
 import { EmployeeDb } from "./employee-db-module.js";
 import { departmentAPI } from "../utils/api.js";
-import { showToast } from "../utils/dom.js";
+import { showToast, escapeHTML } from "../utils/dom.js";
 
 export const DepartmentModule = {
   // Render màn hình quản lý phòng ban và xử lý CRUD đơn giản
@@ -25,7 +25,7 @@ export const DepartmentModule = {
       body.innerHTML = list
         .map(
           (department) => `<tr>
-				<td>${department.name}</td>
+				<td>${escapeHTML(department.name || "")}</td>
 				<td>
 					<button data-edit="${department.id}">Sửa</button>
 					<button data-del="${department.id}">Xóa</button>

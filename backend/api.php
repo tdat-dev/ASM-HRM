@@ -87,6 +87,9 @@ $routes = [
     'POST:employees' => ['employee', 'create'],
     'POST:employees/search' => ['employee', 'search'],
     'GET:employees/stats' => ['employee', 'getStats'],
+
+    // Employee Profile batch
+    'POST:employee-profiles/batch' => ['employeeProfile', 'batchGet'],
     
     // Department routes
     'GET:departments' => ['department', 'getAll'],

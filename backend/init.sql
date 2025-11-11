@@ -154,12 +154,14 @@ CREATE TABLE IF NOT EXISTS leaves (
     employee_id INT NOT NULL,
     start_date DATE NOT NULL,
     end_date DATE NOT NULL,
+    type VARCHAR(32) NULL DEFAULT 'annual',
     reason TEXT NULL,
     status ENUM('pending', 'approved', 'rejected') NOT NULL DEFAULT 'pending',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (employee_id) REFERENCES employees(id) ON DELETE CASCADE,
     INDEX idx_employee (employee_id),
-    INDEX idx_status (status)
+    INDEX idx_status (status),
+    INDEX idx_leaves_type_status_employee (type, status, employee_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- ================================================

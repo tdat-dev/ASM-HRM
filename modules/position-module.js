@@ -1,6 +1,6 @@
 import { EmployeeDb } from "./employee-db-module.js";
 import { positionAPI } from "../utils/api.js";
-import { showToast } from "../utils/dom.js";
+import { showToast, escapeHTML } from "../utils/dom.js";
 
 export const PositionModule = {
   // Render giao diện quản lý chức danh và xử lý thêm/xóa
@@ -26,7 +26,7 @@ export const PositionModule = {
       body.innerHTML = list
         .map(
           (position) => `<tr>
-				<td><strong>${position.title}</strong></td>
+				<td><strong>${escapeHTML(position.title || "")}</strong></td>
 				<td><button data-del="${position.id}">Xóa</button></td>
 			</tr>`
         )

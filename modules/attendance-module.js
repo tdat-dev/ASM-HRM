@@ -1,4 +1,5 @@
 import { attendanceAPI } from "../utils/api.js";
+import { escapeHTML } from "../utils/dom.js";
 import { validateEmployeeId } from "../utils/validators.js";
 
 // Module quản lý chấm công (check-in, check-out)
@@ -59,7 +60,7 @@ export const AttendanceModule = {
         await this.checkIn(id);
         alertEl.innerHTML = '<div class="alert success">Đã check-in</div>';
       } catch (err) {
-        alertEl.innerHTML = `<div class="alert error">${err.message}</div>`;
+        alertEl.innerHTML = `<div class="alert error">${escapeHTML(err.message || "Có lỗi xảy ra")}</div>`;
       }
     });
     wrap.querySelector("#btnOut").addEventListener("click", async () => {
@@ -68,7 +69,7 @@ export const AttendanceModule = {
         await this.checkOut(id);
         alertEl.innerHTML = '<div class="alert success">Đã check-out</div>';
       } catch (err) {
-        alertEl.innerHTML = `<div class="alert error">${err.message}</div>`;
+        alertEl.innerHTML = `<div class="alert error">${escapeHTML(err.message || "Có lỗi xảy ra")}</div>`;
       }
     });
   },

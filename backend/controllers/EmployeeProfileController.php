@@ -5,11 +5,46 @@ class EmployeeProfileController
 {
     private $profileModel;
 
-    public function __construct()
+    public function __construct(?EmployeeProfileModel $profileModel = null)
     {
-        $this->profileModel = new EmployeeProfileModel();
+        // Allow DI for testability; default to real model if none provided
+        $this->profileModel = $profileModel ?? new EmployeeProfileModel();
     }
 
+    /**
+     * Batch get profiles by employee IDs
+     * Body: { ids: number[] }
+     */
+    public function batchGet(array $data)
+    {
+        try {
+            $ids = $data['ids'] ?? [];
+            if (!is_array($ids) || empty($ids)) {
+                throw new Exception('Danh sách ID không hợp lệ');
+            }
+            $ids = array_values(array_filter(array_map('intval', $ids), fn($v) => $v > 0));
+            if (empty($ids)) {
+                throw new Exception('Danh sách ID trống');
+            }
+
+            $profiles = [];
+            foreach ($ids as $id) {
+                $profile = $this->profileModel->getProfile($id);
+                $profile['employee_id'] = $id;
+                $profiles[] = $profile;
+            }
+
+            return [
+                'success' => true,
+                'data' => $profiles,
+            ];
+        } catch (Exception $e) {
+            return [
+                'success' => false,
+                'message' => $e->getMessage(),
+            ];
+        }
+    }
     public function getByEmployeeId(int $employeeId)
     {
         try {
@@ -38,13 +73,19 @@ class EmployeeProfileController
                 throw new Exception('ID nhân viên không hợp lệ');
             }
 
+            // Basic normalization; HTML escaping should be applied on output.
+            // Optionally strip tags to mitigate stored XSS at source.
+            $strip = function (?string $v): string {
+                return trim((string)($v ?? ''));
+            };
+
             $normalized = [
                 'avatar' => $data['avatar'] ?? null,
-                'skills' => isset($data['skills']) ? trim((string) $data['skills']) : '',
+                'skills' => $strip($data['skills'] ?? ''),
                 'bank' => [
-                    'bankName' => isset($data['bank']['bankName']) ? trim((string) $data['bank']['bankName']) : '',
-                    'accountName' => isset($data['bank']['accountName']) ? trim((string) $data['bank']['accountName']) : '',
-                    'accountNumber' => isset($data['bank']['accountNumber']) ? trim((string) $data['bank']['accountNumber']) : '',
+                    'bankName' => $strip($data['bank']['bankName'] ?? ''),
+                    'accountName' => $strip($data['bank']['accountName'] ?? ''),
+                    'accountNumber' => $strip($data['bank']['accountNumber'] ?? ''),
                 ],
                 'emergencyContacts' => $this->sanitizeList($data['emergencyContacts'] ?? [], ['name']),
                 'dependents' => $this->sanitizeList($data['dependents'] ?? [], ['name']),

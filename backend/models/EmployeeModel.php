@@ -12,7 +12,8 @@ class EmployeeModel extends BaseModel {
      */
     private function tableExists($tableName) {
         try {
-            $stmt = $this->db->query("SHOW TABLES LIKE '$tableName'");
+            $stmt = $this->db->prepare("SELECT TABLE_NAME FROM information_schema.tables WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ?");
+            $stmt->execute([$tableName]);
             return $stmt->rowCount() > 0;
         } catch (PDOException $e) {
             return false;
@@ -24,71 +25,28 @@ class EmployeeModel extends BaseModel {
      */
     public function getAllWithDetails() {
         try {
-            // Thử query đơn giản trước để kiểm tra có dữ liệu không
-            $simpleSql = "SELECT COUNT(*) as total FROM {$this->table}";
-            $countStmt = $this->db->query($simpleSql);
-            $countResult = $countStmt->fetch(PDO::FETCH_ASSOC);
-            error_log("[EmployeeModel] Total employees in DB: " . ($countResult['total'] ?? 0));
-            
             // Kiểm tra xem bảng employee_profiles có tồn tại không
             $hasProfileTable = $this->tableExists('employee_profiles');
-            error_log("[EmployeeModel] employee_profiles table exists: " . ($hasProfileTable ? 'yes' : 'no'));
-            
-            // Query đầy đủ với JOIN - thêm employee_profiles nếu bảng tồn tại
+
+            // Xây dựng SELECT/JOINS có điều kiện, tránh trùng lặp và đảm bảo dữ liệu nhất quán
+            $select = "SELECT e.*, 
+                               e.department_id AS departmentId,
+                               e.position_id AS positionId,
+                               d.name as department_name,
+                               p.title as position_title";
+            $joins = " FROM {$this->table} e
+                       LEFT JOIN departments d ON e.department_id = d.id
+                       LEFT JOIN positions p ON e.position_id = p.id";
             if ($hasProfileTable) {
-                $sql = "SELECT e.*, 
-                               e.department_id AS departmentId,
-                               e.position_id AS positionId,
-                               d.name as department_name,
-                               p.title as position_title,
-                               ep.skills as profile_skills,
-                               ep.avatar as profile_avatar
-                        FROM {$this->table} e
-                        LEFT JOIN departments d ON e.department_id = d.id
-                        LEFT JOIN positions p ON e.position_id = p.id
-                        LEFT JOIN employee_profiles ep ON ep.employee_id = e.id
-                        ORDER BY e.id DESC";
-            } else {
-                $sql = "SELECT e.*, 
-                               e.department_id AS departmentId,
-                               e.position_id AS positionId,
-                               d.name as department_name,
-                               p.title as position_title
-                        FROM {$this->table} e
-                        LEFT JOIN departments d ON e.department_id = d.id
-                        LEFT JOIN positions p ON e.position_id = p.id
-                        ORDER BY e.id DESC";
+                $select .= ", ep.skills as profile_skills, ep.avatar as profile_avatar";
+                $joins .= " LEFT JOIN employee_profiles ep ON ep.employee_id = e.id";
             }
-            
-            error_log("[EmployeeModel] Executing SQL: " . $sql);
+            $sql = $select . $joins . " ORDER BY e.id DESC";
+
             $stmt = $this->db->query($sql);
             $results = $stmt->fetchAll(PDO::FETCH_ASSOC);
-            error_log("[EmployeeModel] Query returned " . count($results) . " rows");
-            
-            if (count($results) === 0 && ($countResult['total'] ?? 0) > 0) {
-                error_log("[EmployeeModel] WARNING: DB has " . $countResult['total'] . " employees but query returned 0. Possible JOIN issue.");
-                // Thử query không JOIN để xem có dữ liệu không
-                $simpleQuery = "SELECT * FROM {$this->table} ORDER BY id DESC";
-                $simpleStmt = $this->db->query($simpleQuery);
-                $simpleResults = $simpleStmt->fetchAll(PDO::FETCH_ASSOC);
-                error_log("[EmployeeModel] Simple query (no JOIN) returned " . count($simpleResults) . " rows");
-                if (count($simpleResults) > 0) {
-                    // Map lại để có departmentId và positionId
-                    foreach ($simpleResults as &$row) {
-                        $row['departmentId'] = $row['department_id'] ?? null;
-                        $row['positionId'] = $row['position_id'] ?? null;
-                    }
-                    return $simpleResults;
-                }
-            }
-            
-            if (count($results) > 0) {
-                error_log("[EmployeeModel] First row sample: " . json_encode($results[0]));
-            }
             return $results;
         } catch (PDOException $e) {
-            error_log("Error in getAllWithDetails: " . $e->getMessage());
-            error_log("Error trace: " . $e->getTraceAsString());
             return [];
         }
     }
