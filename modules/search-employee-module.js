@@ -86,6 +86,12 @@ export const SearchEmployeeModule = {
       showToast(error.message || "Không thể tải danh sách nhân viên", "error");
     }
 
+    // Cache danh sách nhân viên đã tải để tránh gọi API lặp lại khi tìm kiếm
+    let cachedEmployees = [];
+    try {
+      cachedEmployees = await EmployeeDb.getAllEmployees();
+    } catch {}
+
     document
       .getElementById("searchForm")
       .addEventListener("submit", async (e) => {
@@ -117,9 +123,12 @@ export const SearchEmployeeModule = {
         const regex = nameRe ? new RegExp(nameRe, "i") : null;
 
         try {
-          const allEmployees = await EmployeeDb.getAllEmployees();
+          // Lọc trên dữ liệu đã cache để tránh gọi API lại
+          const source = Array.isArray(cachedEmployees) && cachedEmployees.length > 0
+            ? cachedEmployees
+            : await EmployeeDb.getAllEmployees();
 
-          const rows = await EmployeeDb.filterEmployees((emp) => {
+          const rows = source.filter((emp) => {
             const okName = regex ? regex.test(emp.name) : true;
             const empDeptId = emp.departmentId || emp.department_id;
             const okDept = dept ? String(empDeptId) === dept : true;

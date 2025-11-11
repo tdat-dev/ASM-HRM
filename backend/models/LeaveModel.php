@@ -42,7 +42,8 @@ class LeaveModel extends BaseModel {
             $sql = "SELECT start_date, end_date 
                     FROM {$this->table}
                     WHERE employee_id = :employee_id 
-                    AND status = 'approved'";
+                    AND status = 'approved'
+                    AND type = 'annual'";
             
             $stmt = $this->db->prepare($sql);
             $stmt->execute(['employee_id' => $employeeId]);

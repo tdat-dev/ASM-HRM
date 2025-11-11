@@ -37,8 +37,8 @@ class EmployeeModel extends BaseModel {
             // Query đầy đủ với JOIN - thêm employee_profiles nếu bảng tồn tại
             if ($hasProfileTable) {
                 $sql = "SELECT e.*, 
-                               COALESCE(e.department_id, NULL) AS departmentId,
-                               COALESCE(e.position_id, NULL) AS positionId,
+                               e.department_id AS departmentId,
+                               e.position_id AS positionId,
                                d.name as department_name,
                                p.title as position_title,
                                ep.skills as profile_skills,
@@ -50,8 +50,8 @@ class EmployeeModel extends BaseModel {
                         ORDER BY e.id DESC";
             } else {
                 $sql = "SELECT e.*, 
-                               COALESCE(e.department_id, NULL) AS departmentId,
-                               COALESCE(e.position_id, NULL) AS positionId,
+                               e.department_id AS departmentId,
+                               e.position_id AS positionId,
                                d.name as department_name,
                                p.title as position_title
                         FROM {$this->table} e

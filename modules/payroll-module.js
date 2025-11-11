@@ -1,6 +1,6 @@
 import { EmployeeDb } from "./employee-db-module.js";
 import { escapeHTML, formatVND } from "../utils/dom.js";
-import { loadProfile } from "./profile-store.js";
+import { loadProfiles } from "./profile-store.js";
 
 // Constants cho tính toán bảo hiểm và thuế (theo quy định VN - demo)
 const FAMILY_DEDUCTION = 11000000; // Giảm trừ gia cảnh: 11 triệu VNĐ
@@ -48,16 +48,17 @@ export const PayrollModule = {
     viewEl.appendChild(container);
 
     const employees = await EmployeeDb.getAllEmployees();
-    const rows = await Promise.all(
-      employees.map(async (e) => {
-        const profile = await loadProfile(e.id);
+    const ids = employees.map((e) => e.id);
+    const profileMap = await loadProfiles(ids);
+    const rows = employees.map((e) => {
+      const profile = profileMap.get(Number(e.id)) || {};
       const numDependents = Array.isArray(profile.dependents) ? profile.dependents.length : 0;
       const base = Number(e.salary || 0);
       const bonus = Number(e.bonus || 0);
       const penalty = Number(e.deduction || 0);
       const ded = computeDeductions(base, numDependents);
       const gross = base + bonus;
-      const totalDeduction = penalty + ded.insuranceTotal + ded.PIT + ded.dependentTotal;
+      const totalDeduction = penalty + ded.insuranceTotal + ded.PIT;
       const net = gross - totalDeduction;
       return {
         id: e.id,
@@ -71,8 +72,7 @@ export const PayrollModule = {
         net,
         numDependents,
       };
-      })
-    );
+    });
 
     const list = document.createElement("div");
     // Escape tất cả dữ liệu động để chống XSS
