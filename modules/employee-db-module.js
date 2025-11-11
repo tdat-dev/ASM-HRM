@@ -5,18 +5,16 @@ import { employeeAPI, departmentAPI, positionAPI } from "../utils/api.js";
 // Export module để sử dụng trong các file khác
 export const EmployeeDb = {
   /**
-   * Khởi tạo dữ liệu mặc định nếu chưa có - không cần thiết với backend
-   */
-  ensureInitialized() {
-    // Backend đã có dữ liệu mẫu trong database
-  },
-
-  /**
    * Lấy tất cả nhân viên
    */
   async getAllEmployees() {
-    const result = await employeeAPI.getAll();
-    return result.data || [];
+    try {
+      const result = await employeeAPI.getAll();
+      const employees = result.data || [];
+      return employees;
+    } catch (error) {
+      throw error;
+    }
   },
 
   /**
@@ -36,7 +34,6 @@ export const EmployeeDb = {
    */
   async saveEmployees(employeesList) {
     // API tự động lưu khi create/update/delete
-    console.warn("saveEmployees is deprecated with API backend");
   },
 
   /**
@@ -68,7 +65,6 @@ export const EmployeeDb = {
    */
   async saveDepartments(departmentsList) {
     // API tự động lưu khi create/update/delete
-    console.warn("saveDepartments is deprecated with API backend");
   },
 
   /**
@@ -84,6 +80,5 @@ export const EmployeeDb = {
    */
   async savePositions(positionsList) {
     // API tự động lưu khi create/update/delete
-    console.warn("savePositions is deprecated with API backend");
   },
 };

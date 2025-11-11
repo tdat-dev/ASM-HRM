@@ -60,6 +60,74 @@ CREATE TABLE IF NOT EXISTS employees (
     FOREIGN KEY (position_id) REFERENCES positions(id) ON DELETE RESTRICT
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
+-- Hồ sơ mở rộng
+CREATE TABLE IF NOT EXISTS employee_profiles (
+    employee_id INT PRIMARY KEY,
+    avatar LONGTEXT,
+    bank_name VARCHAR(120),
+    bank_account_name VARCHAR(120),
+    bank_account_number VARCHAR(50),
+    skills TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (employee_id) REFERENCES employees(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS employee_emergency_contacts (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    employee_id INT NOT NULL,
+    name VARCHAR(120) NOT NULL,
+    relation VARCHAR(80),
+    phone VARCHAR(50),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (employee_id) REFERENCES employees(id) ON DELETE CASCADE,
+    INDEX idx_employee (employee_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS employee_dependents (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    employee_id INT NOT NULL,
+    name VARCHAR(120) NOT NULL,
+    relation VARCHAR(80),
+    dob DATE NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (employee_id) REFERENCES employees(id) ON DELETE CASCADE,
+    INDEX idx_employee (employee_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS employee_education (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    employee_id INT NOT NULL,
+    title VARCHAR(150),
+    school VARCHAR(150),
+    year VARCHAR(10),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (employee_id) REFERENCES employees(id) ON DELETE CASCADE,
+    INDEX idx_employee (employee_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS employee_promotions (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    employee_id INT NOT NULL,
+    title VARCHAR(150),
+    promotion_date DATE,
+    note TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (employee_id) REFERENCES employees(id) ON DELETE CASCADE,
+    INDEX idx_employee (employee_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS employee_custom_fields (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    employee_id INT NOT NULL,
+    field_key VARCHAR(100) NOT NULL,
+    field_value TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (employee_id) REFERENCES employees(id) ON DELETE CASCADE,
+    INDEX idx_employee (employee_id),
+    INDEX idx_field_key (field_key)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
 -- ================================================
 -- 5. Bảng Attendance (Chấm công)
 -- ================================================

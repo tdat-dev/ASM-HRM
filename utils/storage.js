@@ -19,7 +19,6 @@ export function safeJSONParse(jsonString, fallback = []) {
     if (!jsonString) return fallback;
     return JSON.parse(jsonString);
   } catch (error) {
-    console.error("Lỗi khi parse JSON:", error);
     return fallback;
   }
 }

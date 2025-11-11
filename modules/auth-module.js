@@ -3,13 +3,6 @@ import { authAPI } from "../utils/api.js";
 
 export const AuthModule = {
   /**
-   * Khởi tạo user mặc định (admin) nếu chưa có - không cần thiết với backend
-   */
-  ensureInitialized() {
-    // Backend đã có user admin mặc định trong database
-  },
-
-  /**
    * Đăng ký user mới
    */
   async register(username, password) {

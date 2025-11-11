@@ -1,5 +1,6 @@
 import { EmployeeDb } from "./employee-db-module.js";
 import { positionAPI } from "../utils/api.js";
+import { showToast } from "../utils/dom.js";
 
 export const PositionModule = {
   // Render giao diện quản lý chức danh và xử lý thêm/xóa
@@ -46,9 +47,10 @@ export const PositionModule = {
           salary_base: 0,
         });
         e.target.reset();
+        showToast("Đã thêm vị trí thành công.", "success");
         await render();
       } catch (error) {
-        alert(error.message || "Có lỗi xảy ra");
+        showToast(error.message || "Có lỗi xảy ra", "error");
       }
     });
 
@@ -59,9 +61,10 @@ export const PositionModule = {
         if (window.confirm("Xóa vị trí?")) {
           try {
             await positionAPI.delete(id);
+            showToast("Đã xóa vị trí thành công.", "success");
             await render();
           } catch (error) {
-            alert(error.message || "Có lỗi xảy ra");
+            showToast(error.message || "Có lỗi xảy ra", "error");
           }
         }
       }

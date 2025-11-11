@@ -66,13 +66,6 @@ export async function callAPI(endpoint, options = {}) {
 
     return result;
   } catch (error) {
-    // Không log "Chưa đăng nhập" hoặc "Unauthorized" vì đây là trạng thái bình thường
-    if (
-      !error.message?.includes("Chưa đăng nhập") &&
-      !error.message?.includes("Unauthorized")
-    ) {
-      console.error("API Error:", error);
-    }
     throw error;
   }
 }
@@ -133,6 +126,18 @@ export const employeeAPI = {
     }),
 
   getStats: () => callAPI("employees/stats"),
+};
+
+/**
+ * Employee Profile API
+ */
+export const employeeProfileAPI = {
+  get: (employeeId) => callAPI(`employee-profiles/${employeeId}`),
+  update: (employeeId, profileData) =>
+    callAPI(`employee-profiles/${employeeId}`, {
+      method: "PUT",
+      data: profileData,
+    }),
 };
 
 /**

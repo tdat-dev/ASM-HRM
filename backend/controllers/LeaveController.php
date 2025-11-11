@@ -36,7 +36,7 @@ class LeaveController {
         try {
             // Validate
             if (empty($data['employee_id']) || empty($data['start_date']) || 
-                empty($data['end_date']) || empty($data['type'])) {
+                empty($data['end_date']) || empty($data['reason'])) {
                 throw new Exception("Thiếu dữ liệu");
             }
             
@@ -44,7 +44,7 @@ class LeaveController {
                 'employee_id' => $data['employee_id'],
                 'start_date' => $data['start_date'],
                 'end_date' => $data['end_date'],
-                'type' => $data['type'],
+                'reason' => $data['reason'],
                 'status' => 'pending'
             ];
             
