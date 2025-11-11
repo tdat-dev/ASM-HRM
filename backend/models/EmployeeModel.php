@@ -8,22 +8,45 @@ class EmployeeModel extends BaseModel {
     protected $table = 'employees';
     
     /**
+     * Kiểm tra xem bảng employee_profiles có tồn tại không
+     */
+    private function tableExists($tableName) {
+        try {
+            $stmt = $this->db->prepare("SELECT TABLE_NAME FROM information_schema.tables WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ?");
+            $stmt->execute([$tableName]);
+            return $stmt->rowCount() > 0;
+        } catch (PDOException $e) {
+            return false;
+        }
+    }
+    
+    /**
      * Lấy tất cả nhân viên kèm thông tin phòng ban và vị trí
      */
     public function getAllWithDetails() {
         try {
-            $sql = "SELECT e.*, 
-                           d.name as department_name,
-                           p.title as position_title
-                    FROM {$this->table} e
-                    LEFT JOIN departments d ON e.department_id = d.id
-                    LEFT JOIN positions p ON e.position_id = p.id
-                    ORDER BY e.id DESC";
-            
+            // Kiểm tra xem bảng employee_profiles có tồn tại không
+            $hasProfileTable = $this->tableExists('employee_profiles');
+
+            // Xây dựng SELECT/JOINS có điều kiện, tránh trùng lặp và đảm bảo dữ liệu nhất quán
+            $select = "SELECT e.*, 
+                               e.department_id AS departmentId,
+                               e.position_id AS positionId,
+                               d.name as department_name,
+                               p.title as position_title";
+            $joins = " FROM {$this->table} e
+                       LEFT JOIN departments d ON e.department_id = d.id
+                       LEFT JOIN positions p ON e.position_id = p.id";
+            if ($hasProfileTable) {
+                $select .= ", ep.skills as profile_skills, ep.avatar as profile_avatar";
+                $joins .= " LEFT JOIN employee_profiles ep ON ep.employee_id = e.id";
+            }
+            $sql = $select . $joins . " ORDER BY e.id DESC";
+
             $stmt = $this->db->query($sql);
-            return $stmt->fetchAll();
+            $results = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            return $results;
         } catch (PDOException $e) {
-            error_log("Error in getAllWithDetails: " . $e->getMessage());
             return [];
         }
     }
@@ -33,13 +56,33 @@ class EmployeeModel extends BaseModel {
      */
     public function search($filters = []) {
         try {
-            $sql = "SELECT e.*, 
-                           d.name as department_name,
-                           p.title as position_title
-                    FROM {$this->table} e
-                    LEFT JOIN departments d ON e.department_id = d.id
-                    LEFT JOIN positions p ON e.position_id = p.id
-                    WHERE 1=1";
+            // Kiểm tra xem bảng employee_profiles có tồn tại không
+            $hasProfileTable = $this->tableExists('employee_profiles');
+            
+            if ($hasProfileTable) {
+                $sql = "SELECT e.*, 
+                               e.department_id AS departmentId,
+                               e.position_id AS positionId,
+                               d.name as department_name,
+                               p.title as position_title,
+                               ep.skills as profile_skills,
+                               ep.avatar as profile_avatar
+                        FROM {$this->table} e
+                        LEFT JOIN departments d ON e.department_id = d.id
+                        LEFT JOIN positions p ON e.position_id = p.id
+                        LEFT JOIN employee_profiles ep ON ep.employee_id = e.id
+                        WHERE 1=1";
+            } else {
+                $sql = "SELECT e.*, 
+                               e.department_id AS departmentId,
+                               e.position_id AS positionId,
+                               d.name as department_name,
+                               p.title as position_title
+                        FROM {$this->table} e
+                        LEFT JOIN departments d ON e.department_id = d.id
+                        LEFT JOIN positions p ON e.position_id = p.id
+                        WHERE 1=1";
+            }
             
             $params = [];
             
@@ -66,11 +109,17 @@ class EmployeeModel extends BaseModel {
                 $params['max_salary'] = $filters['max_salary'];
             }
             
+            // Lọc theo skills nếu bảng employee_profiles tồn tại
+            if ($hasProfileTable && !empty($filters['skills'])) {
+                $sql .= " AND ep.skills LIKE :skills";
+                $params['skills'] = '%' . $filters['skills'] . '%';
+            }
+            
             $sql .= " ORDER BY e.salary ASC";
             
             $stmt = $this->db->prepare($sql);
             $stmt->execute($params);
-            return $stmt->fetchAll();
+            return $stmt->fetchAll(PDO::FETCH_ASSOC);
         } catch (PDOException $e) {
             error_log("Error in search: " . $e->getMessage());
             return [];

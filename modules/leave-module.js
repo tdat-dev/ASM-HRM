@@ -1,16 +1,15 @@
 import { leaveAPI } from "../utils/api.js";
 import { validateEmployeeId, validateDateRange } from "../utils/validators.js";
+import { showToast, escapeHTML } from "../utils/dom.js";
 
 // Module quản lý nghỉ phép
 const DEFAULT_ANNUAL_LEAVE_DAYS = 20; // Số ngày phép mặc định mỗi năm
-const LEAVE_TYPE_ANNUAL = "annual";
-const LEAVE_TYPE_SICK = "sick";
 
 export const LeaveModule = {
   /**
    * Tạo yêu cầu nghỉ phép mới
    */
-  async requestLeave(employeeId, startDate, endDate, leaveType, reason = "") {
+  async requestLeave(employeeId, startDate, endDate, reason) {
     if (!employeeId || !startDate || !endDate) {
       throw new Error("Thiếu dữ liệu");
     }
@@ -27,9 +26,12 @@ export const LeaveModule = {
     if (!dateOk) {
       messages.push(...dateErrors);
     }
-    const allowedTypes = [LEAVE_TYPE_ANNUAL, LEAVE_TYPE_SICK];
-    if (!allowedTypes.includes(leaveType)) {
-      messages.push("Loại nghỉ phép không hợp lệ");
+    const safeReason = String(reason || "").trim();
+    if (safeReason.length < 3) {
+      messages.push("Lý do phải có ít nhất 3 ký tự");
+    }
+    if (safeReason.length > 500) {
+      messages.push("Lý do không được vượt quá 500 ký tự");
     }
     if (messages.length > 0) {
       throw new Error(messages.join(", "));
@@ -37,7 +39,7 @@ export const LeaveModule = {
 
     await leaveAPI.create({
       employee_id: employeeId,
-      type: leaveType,
+      reason: safeReason,
       start_date: startDate,
       end_date: endDate,
     });
@@ -73,15 +75,18 @@ export const LeaveModule = {
     wrap.className = "card";
     wrap.innerHTML = `
 			<form id="leaveForm" style="display:grid;gap:8px;max-width:520px;">
-				<input id="lvEmp" type="number" placeholder="Employee ID" required />
+				<input id="lvEmp" type="number" placeholder="Mã nhân viên" required />
 				<div><label>Từ ngày</label><input id="lvStart" type="date" required /></div>
 				<div><label>Đến ngày</label><input id="lvEnd" type="date" required /></div>
-				<select id="lvType"><option value="annual">Annual</option><option value="sick">Sick</option></select>
+				<div>
+					<label>Lý do nghỉ</label>
+					<textarea id="lvReason" rows="3" placeholder="Ví dụ: Nghỉ phép chăm sóc gia đình" required></textarea>
+				</div>
 				<button class="primary">Gửi yêu cầu</button>
 			</form>
 			<div style="margin-top:12px;">
 				<h3>Danh sách yêu cầu</h3>
-				<table class="table"><thead><tr><th>Emp</th><th>Khoảng</th><th>Loại</th><th>Trạng thái</th><th></th></tr></thead><tbody id="lvBody"></tbody></table>
+				<table class="table"><thead><tr><th>Emp</th><th>Khoảng</th><th>Lý do</th><th>Trạng thái</th><th></th></tr></thead><tbody id="lvBody"></tbody></table>
 			</div>
 		`;
     viewEl.appendChild(wrap);
@@ -95,10 +100,10 @@ export const LeaveModule = {
         body.innerHTML = list
           .map(
             (leave) => `<tr>
-				<td>${leave.employee_name || leave.employee_id}</td>
-				<td>${leave.start_date} → ${leave.end_date}</td>
-				<td>${leave.type || "N/A"}</td>
-				<td>${leave.status}</td>
+				<td>${escapeHTML(leave.employee_name || String(leave.employee_id ?? ""))}</td>
+				<td>${escapeHTML(leave.start_date || "-")} → ${escapeHTML(leave.end_date || "-")}</td>
+				<td>${leave.reason ? escapeHTML(leave.reason) : "-"}</td>
+				<td>${escapeHTML(leave.status || "-")}</td>
 				<td>${
           leave.status === "pending"
             ? `<button data-approve="${leave.id}">Duyệt</button>`
@@ -108,7 +113,7 @@ export const LeaveModule = {
           )
           .join("");
       } catch (error) {
-        body.innerHTML = `<tr><td colspan="5" class="alert error">${error.message}</td></tr>`;
+        body.innerHTML = `<tr><td colspan="5" class="alert error">${escapeHTML(error.message || "Có lỗi xảy ra")}</td></tr>`;
       }
     };
     await render();
@@ -118,13 +123,14 @@ export const LeaveModule = {
       const id = Number(wrap.querySelector("#lvEmp").value);
       const s = wrap.querySelector("#lvStart").value;
       const en = wrap.querySelector("#lvEnd").value;
-      const type = wrap.querySelector("#lvType").value;
+      const reason = wrap.querySelector("#lvReason").value;
       try {
-        await this.requestLeave(id, s, en, type);
+        await this.requestLeave(id, s, en, reason);
+        showToast("Đã gửi đơn nghỉ phép thành công.", "success");
         e.target.reset();
         await render();
       } catch (err) {
-        alert(err.message);
+        showToast(err.message, "error");
       }
     });
 
@@ -134,9 +140,10 @@ export const LeaveModule = {
         const id = Number(t.getAttribute("data-approve"));
         try {
           await this.approveLeave(id);
+          showToast("Đã duyệt đơn nghỉ phép.", "success");
           await render();
         } catch (error) {
-          alert(error.message);
+          showToast(error.message, "error");
         }
       }
     });

@@ -5,7 +5,7 @@ import {
   validateDepartmentExists,
   validatePositionExists,
 } from "../utils/validators.js";
-import { showAlert } from "../utils/dom.js";
+import { showAlert, escapeHTML } from "../utils/dom.js";
 
 export const AddEmployeeModule = {
   // Render màn hình thêm nhân viên và xử lý logic tạo mới
@@ -30,7 +30,7 @@ export const AddEmployeeModule = {
 						${departments
               .map(
                 (department) =>
-                  `<option value="${department.id}">${department.name}</option>`
+                  `<option value="${department.id}">${escapeHTML(department.name || "")}</option>`
               )
               .join("")}
 					</select>
@@ -41,7 +41,7 @@ export const AddEmployeeModule = {
 						${positions
               .map(
                 (position) =>
-                  `<option value="${position.id}">${position.title}</option>`
+                  `<option value="${position.id}">${escapeHTML(position.title || "")}</option>`
               )
               .join("")}
 					</select>

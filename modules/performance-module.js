@@ -1,5 +1,6 @@
 import { reviewAPI } from "../utils/api.js";
 import { validateEmployeeId, validateRating } from "../utils/validators.js";
+import { showToast, escapeHTML } from "../utils/dom.js";
 
 export const PerformanceModule = {
   // Thêm đánh giá mới cho nhân viên với rating và feedback tương ứng
@@ -66,7 +67,7 @@ export const PerformanceModule = {
           )
           .join("");
       } catch (error) {
-        body.innerHTML = `<tr><td colspan="2" class="alert error">${error.message}</td></tr>`;
+        body.innerHTML = `<tr><td colspan="2" class="alert error">${escapeHTML(error.message || "Có lỗi xảy ra")}</td></tr>`;
       }
     };
     await render();
@@ -78,8 +79,9 @@ export const PerformanceModule = {
       const fb = wrap.querySelector("#rvFb").value.trim();
       try {
         await this.addReview(id, rating, fb);
+        showToast("Đã thêm đánh giá thành công.", "success");
       } catch (err) {
-        alert(err.message);
+        showToast(err.message, "error");
         return;
       }
       e.target.reset();

@@ -66,6 +66,7 @@ $input = json_decode(file_get_contents('php://input'), true);
 $controllers = [
     'auth' => new AuthController(),
     'employee' => new EmployeeController(),
+    'employeeProfile' => new EmployeeProfileController(),
     'department' => new DepartmentController(),
     'position' => new PositionController(),
     'attendance' => new AttendanceController(),
@@ -86,6 +87,9 @@ $routes = [
     'POST:employees' => ['employee', 'create'],
     'POST:employees/search' => ['employee', 'search'],
     'GET:employees/stats' => ['employee', 'getStats'],
+
+    // Employee Profile batch
+    'POST:employee-profiles/batch' => ['employeeProfile', 'batchGet'],
     
     // Department routes
     'GET:departments' => ['department', 'getAll'],
@@ -120,6 +124,8 @@ $regexRoutes = [
     'GET:employees/(\d+)' => ['employee', 'getById'],
     'PUT:employees/(\d+)' => ['employee', 'update'],
     'DELETE:employees/(\d+)' => ['employee', 'delete'],
+    'GET:employee-profiles/(\d+)' => ['employeeProfile', 'getByEmployeeId'],
+    'PUT:employee-profiles/(\d+)' => ['employeeProfile', 'update'],
     'PUT:departments/(\d+)' => ['department', 'update'],
     'DELETE:departments/(\d+)' => ['department', 'delete'],
     'PUT:positions/(\d+)' => ['position', 'update'],

@@ -61,6 +61,76 @@ CREATE TABLE IF NOT EXISTS employees (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- ================================================
+-- 4.1 Bảng Employee Profiles (Hồ sơ mở rộng)
+-- ================================================
+CREATE TABLE IF NOT EXISTS employee_profiles (
+    employee_id INT PRIMARY KEY,
+    avatar LONGTEXT,
+    bank_name VARCHAR(120),
+    bank_account_name VARCHAR(120),
+    bank_account_number VARCHAR(50),
+    skills TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (employee_id) REFERENCES employees(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS employee_emergency_contacts (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    employee_id INT NOT NULL,
+    name VARCHAR(120) NOT NULL,
+    relation VARCHAR(80),
+    phone VARCHAR(50),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (employee_id) REFERENCES employees(id) ON DELETE CASCADE,
+    INDEX idx_employee (employee_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS employee_dependents (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    employee_id INT NOT NULL,
+    name VARCHAR(120) NOT NULL,
+    relation VARCHAR(80),
+    dob DATE NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (employee_id) REFERENCES employees(id) ON DELETE CASCADE,
+    INDEX idx_employee (employee_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS employee_education (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    employee_id INT NOT NULL,
+    title VARCHAR(150),
+    school VARCHAR(150),
+    year VARCHAR(10),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (employee_id) REFERENCES employees(id) ON DELETE CASCADE,
+    INDEX idx_employee (employee_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS employee_promotions (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    employee_id INT NOT NULL,
+    title VARCHAR(150),
+    promotion_date DATE,
+    note TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (employee_id) REFERENCES employees(id) ON DELETE CASCADE,
+    INDEX idx_employee (employee_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS employee_custom_fields (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    employee_id INT NOT NULL,
+    field_key VARCHAR(100) NOT NULL,
+    field_value TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (employee_id) REFERENCES employees(id) ON DELETE CASCADE,
+    INDEX idx_employee (employee_id),
+    INDEX idx_field_key (field_key)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- ================================================
 -- 5. Bảng Attendance (Chấm công)
 -- ================================================
 CREATE TABLE IF NOT EXISTS attendance (
@@ -84,12 +154,14 @@ CREATE TABLE IF NOT EXISTS leaves (
     employee_id INT NOT NULL,
     start_date DATE NOT NULL,
     end_date DATE NOT NULL,
-    type ENUM('annual', 'sick') NOT NULL DEFAULT 'annual',
+    type VARCHAR(32) NULL DEFAULT 'annual',
+    reason TEXT NULL,
     status ENUM('pending', 'approved', 'rejected') NOT NULL DEFAULT 'pending',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (employee_id) REFERENCES employees(id) ON DELETE CASCADE,
     INDEX idx_employee (employee_id),
-    INDEX idx_status (status)
+    INDEX idx_status (status),
+    INDEX idx_leaves_type_status_employee (type, status, employee_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- ================================================
@@ -117,7 +189,7 @@ DELETE FROM users WHERE username = 'admin';
 -- Tạo user admin mới với password: admin123
 -- Password hash được tạo bởi PHP password_hash()
 INSERT INTO users (username, password, created_at) VALUES
-('admin', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', NOW());
+('admin', '$2y$10$Y/czLvdNopHyWnMGV1Ej2OTrC/OwApczdCYJqviQBjW70zSz44t9O', NOW());
 
 -- Insert Departments
 INSERT INTO departments (id, name, manager_id) VALUES 
@@ -145,9 +217,9 @@ INSERT INTO attendance (employee_id, date, check_in, check_out) VALUES
 (1002, CURDATE(), CONCAT(CURDATE(), ' 08:15:00'), NULL);
 
 -- Insert Leaves mẫu
-INSERT INTO leaves (employee_id, start_date, end_date, type, status) VALUES 
-(1001, '2025-11-01', '2025-11-03', 'annual', 'pending'),
-(1003, '2025-10-25', '2025-10-26', 'sick', 'approved');
+INSERT INTO leaves (employee_id, start_date, end_date, reason, status) VALUES 
+(1001, '2025-11-01', '2025-11-03', 'Nghỉ phép năm', 'pending'),
+(1003, '2025-10-25', '2025-10-26', 'Nghỉ ốm', 'approved');
 
 -- Insert Reviews mẫu
 INSERT INTO reviews (employee_id, rating, feedback, review_date) VALUES 

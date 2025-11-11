@@ -19,6 +19,7 @@ import { NotificationsModule } from "./modules/notifications-module.js";
 import { CoreHrModule } from "./modules/core-hr-module.js";
 import { DirectoryModule } from "./modules/directory-module.js";
 import { OrgChartModule } from "./modules/org-chart-module.js";
+import { escapeHTML } from "./utils/dom.js";
 
 const viewEl = document.getElementById("view");
 const pageTitleEl = document.getElementById("pageTitle");
@@ -83,11 +84,29 @@ function initTheme() {
     window.matchMedia("(prefers-color-scheme: dark)").matches;
   const theme = saved || (prefersDark ? "dark" : "light");
   applyTheme(theme);
+
+  // Lắng nghe thay đổi theme của hệ thống
+  if (window.matchMedia) {
+    const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
+    // Chỉ tự động đổi theme nếu chưa có lựa chọn trong localStorage
+    const handleThemeChange = (e) => {
+      if (!localStorage.getItem(THEME_KEY)) {
+        applyTheme(e.matches ? "dark" : "light");
+      }
+    };
+    // Modern browsers
+    if (mediaQuery.addEventListener) {
+      mediaQuery.addEventListener("change", handleThemeChange);
+    } else {
+      // Fallback for older browsers
+      mediaQuery.addListener(handleThemeChange);
+    }
+  }
+
   if (themeToggleBtn) {
     themeToggleBtn.addEventListener("click", () => {
-      const next = document.documentElement.classList.contains("theme-dark")
-        ? "light"
-        : "dark";
+      const isDark = document.documentElement.classList.contains("theme-dark");
+      const next = isDark ? "light" : "dark";
       applyTheme(next);
     });
   }
@@ -104,15 +123,17 @@ function updateNotificationBadge() {
   try {
     const raw = localStorage.getItem("hrm_notifications") || "[]";
     const items = JSON.parse(raw);
-    const unread = Array.isArray(items) ? items.filter((n) => !n.read).length : 0;
+    const unread = Array.isArray(items)
+      ? items.filter((n) => !n.read).length
+      : 0;
     if (unread > 0) {
-      if (notifyBadge) notifyBadge.style.display = "inline-flex";
+      if (notifyBadge) notifyBadge.classList.remove("is-hidden");
       if (notifyCountEl) notifyCountEl.textContent = String(unread);
     } else {
-      if (notifyBadge) notifyBadge.style.display = "none";
+      if (notifyBadge) notifyBadge.classList.add("is-hidden");
     }
   } catch {
-    if (notifyBadge) notifyBadge.style.display = "none";
+    if (notifyBadge) notifyBadge.classList.add("is-hidden");
   }
 }
 
@@ -132,11 +153,15 @@ function renderNotifyPanel() {
         (n) => `
         <div class="notify-item ${n.read ? "" : "unread"}">
           <div style="display:flex; justify-content: space-between; gap:8px; align-items: center;">
-            <div style="font-weight:700;">${n.title || "Thông báo"}</div>
-            <button class="secondary" data-id="${n.id}" data-action="mark" title="Đánh dấu đã đọc"><i class="fas fa-check"></i></button>
+            <div style="font-weight:700;">${escapeHTML(n.title || "Thông báo")}</div>
+            <button class="secondary" data-id="${String(
+              Number(n.id) || ""
+            )}" data-action="mark" title="Đánh dấu đã đọc"><i class="fas fa-check"></i></button>
           </div>
-          <div style="margin-top:6px;">${n.message || ""}</div>
-          <div class="meta">${new Date(n.createdAt || Date.now()).toLocaleString()}</div>
+          <div style="margin-top:6px;">${escapeHTML(n.message || "")}</div>
+          <div class="meta">${new Date(
+            n.createdAt || Date.now()
+          ).toLocaleString()}</div>
         </div>
       `
       )
@@ -145,7 +170,9 @@ function renderNotifyPanel() {
     notifyList.querySelectorAll("button[data-action='mark']").forEach((btn) => {
       btn.addEventListener("click", () => {
         const id = Number(btn.getAttribute("data-id"));
-        const arr = JSON.parse(localStorage.getItem("hrm_notifications") || "[]");
+        const arr = JSON.parse(
+          localStorage.getItem("hrm_notifications") || "[]"
+        );
         const item = arr.find((x) => x.id === id);
         if (item) item.read = true;
         localStorage.setItem("hrm_notifications", JSON.stringify(arr));
@@ -154,7 +181,8 @@ function renderNotifyPanel() {
       });
     });
   } catch (e) {
-    if (notifyList) notifyList.innerHTML = `<div class="muted">Không thể tải thông báo.</div>`;
+    if (notifyList)
+      notifyList.innerHTML = `<div class="muted">Không thể tải thông báo.</div>`;
   }
 }
 
@@ -170,6 +198,23 @@ const routes = {
       const employees = await EmployeeDb.getAllEmployees();
       const departments = await EmployeeDb.getAllDepartments();
       const positions = await EmployeeDb.getAllPositions();
+
+      // Kiểm tra dữ liệu có tồn tại không
+      if (!Array.isArray(employees)) {
+        throw new Error(
+          "Không thể tải danh sách nhân viên. Vui lòng kiểm tra kết nối API."
+        );
+      }
+      if (!Array.isArray(departments)) {
+        throw new Error(
+          "Không thể tải danh sách phòng ban. Vui lòng kiểm tra kết nối API."
+        );
+      }
+      if (!Array.isArray(positions)) {
+        throw new Error(
+          "Không thể tải danh sách vị trí. Vui lòng kiểm tra kết nối API."
+        );
+      }
       const attendanceData = JSON.parse(
         localStorage.getItem("hrm_attendance") || "[]"
       );
@@ -335,11 +380,11 @@ const routes = {
                   <td><span style="background: var(--primary); color: white; padding: 4px 8px; border-radius: 6px; font-weight: 600; font-size: 12px;">#${
                     emp.id
                   }</span></td>
-                  <td><strong>${emp.name}</strong></td>
-                  <td>${dept}</td>
-                  <td>${pos}</td>
+                  <td><strong>${escapeHTML(emp.name || "")}</strong></td>
+                  <td>${escapeHTML(dept)}</td>
+                  <td>${escapeHTML(pos)}</td>
                   <td>${(emp.salary || 0).toLocaleString()} VNĐ</td>
-                  <td>${emp.hireDate || "-"}</td>
+                  <td>${escapeHTML(emp.hireDate || "-")}</td>
                 </tr>
               `;
               })
@@ -351,19 +396,34 @@ const routes = {
 
       viewEl.innerHTML = dashboardHTML;
     } catch (error) {
-      console.error("Dashboard error:", error);
       // Nếu lỗi 401 Unauthorized, redirect về login
       if (error.message && error.message.includes("Unauthorized")) {
         showAuth();
         return;
       }
-      // Lỗi khác, hiển thị thông báo
+      // Lỗi khác, hiển thị thông báo chi tiết
+      const errorMessage = escapeHTML(error.message || "Đã xảy ra lỗi không xác định");
       viewEl.innerHTML = `
-        <div style="text-align: center; padding: 40px;">
-          <p style="color: var(--danger);">❌ Lỗi: ${error.message}</p>
-          <button onclick="location.reload()" class="secondary">Tải lại trang</button>
+        <div class="card" style="text-align: center; padding: 40px;">
+          <div class="alert error">
+            <i class="fas fa-exclamation-triangle"></i>
+            <strong>Lỗi tải dữ liệu:</strong> ${errorMessage}
+          </div>
+          <p style="margin-top: 20px; color: var(--muted);">
+            Vui lòng kiểm tra:
+            <br>• Backend API có đang chạy không?
+            <br>• Kết nối database có ổn định không?
+            <br>• Dữ liệu có tồn tại trong database không?
+          </p>
+          <button id="reloadBtn" class="primary" style="margin-top: 20px;">
+            <i class="fas fa-sync-alt"></i> Tải lại trang
+          </button>
         </div>
       `;
+      const reloadBtn = document.getElementById("reloadBtn");
+      if (reloadBtn) {
+        reloadBtn.addEventListener("click", () => location.reload());
+      }
     }
   },
   "employees-add": () => AddEmployeeModule.mount(viewEl, pageTitleEl),
@@ -372,7 +432,8 @@ const routes = {
   "employees-search": () => SearchEmployeeModule.mount(viewEl, pageTitleEl),
   departments: () => DepartmentModule.mount(viewEl, pageTitleEl),
   positions: () => PositionModule.mount(viewEl, pageTitleEl),
-  salary: () => SalaryModule.mount(viewEl, pageTitleEl),
+  // Salary page routes to Payroll to keep only the payroll table view
+  salary: () => PayrollModule.mount(viewEl, pageTitleEl),
   attendance: () => AttendanceModule.mount(viewEl, pageTitleEl),
   leave: () => LeaveModule.mount(viewEl, pageTitleEl),
   performance: () => PerformanceModule.mount(viewEl, pageTitleEl),
@@ -383,7 +444,7 @@ const routes = {
   reports: () => ReportsModule.mount(viewEl, pageTitleEl),
   notifications: () => NotificationsModule.mount(viewEl, pageTitleEl),
   "core-hr": () => CoreHrModule.mount(viewEl, pageTitleEl),
-  "directory": () => DirectoryModule.mount(viewEl, pageTitleEl),
+  directory: () => DirectoryModule.mount(viewEl, pageTitleEl),
   "org-chart": () => OrgChartModule.mount(viewEl, pageTitleEl),
 };
 
@@ -421,8 +482,6 @@ async function navigate(route) {
 // Khởi tạo ứng dụng: theme, dữ liệu demo, menu, session
 async function init() {
   initTheme();
-  AuthModule.ensureInitialized();
-  EmployeeDb.ensureInitialized();
   registerMenuHandlers();
 
   // Global auth required handler
@@ -439,25 +498,29 @@ async function init() {
   if (notifyToggleBtn) {
     notifyToggleBtn.addEventListener("click", async () => {
       if (!notifyPanel) return;
-      const visible = notifyPanel.style.display !== "none";
-      if (visible) {
-        notifyPanel.style.display = "none";
-      } else {
+      const hidden = notifyPanel.classList.contains("is-hidden");
+      if (hidden) {
         renderNotifyPanel();
-        notifyPanel.style.display = "block";
+        notifyPanel.classList.remove("is-hidden");
+      } else {
+        notifyPanel.classList.add("is-hidden");
       }
     });
   }
   if (notifyClose) {
     notifyClose.addEventListener("click", () => {
-      if (notifyPanel) notifyPanel.style.display = "none";
+      if (notifyPanel) notifyPanel.classList.add("is-hidden");
     });
   }
   if (notifyMarkAll) {
     notifyMarkAll.addEventListener("click", () => {
       try {
-        const arr = JSON.parse(localStorage.getItem("hrm_notifications") || "[]");
-        const next = Array.isArray(arr) ? arr.map((n) => ({ ...n, read: true })) : [];
+        const arr = JSON.parse(
+          localStorage.getItem("hrm_notifications") || "[]"
+        );
+        const next = Array.isArray(arr)
+          ? arr.map((n) => ({ ...n, read: true }))
+          : [];
         localStorage.setItem("hrm_notifications", JSON.stringify(next));
         updateNotificationBadge();
         renderNotifyPanel();
@@ -522,14 +585,19 @@ function showAuth() {
           <i class="fas fa-lock"></i> Mật khẩu
           <span class="required">*</span>
         </label>
-        <input 
-          id="password" 
-          type="password"
-          autocomplete="current-password"
-          placeholder="Nhập mật khẩu"
-          required 
-        />
-        <div id="password-strength" class="password-strength" style="display:none;">
+        <div class="password-wrapper">
+          <input 
+            id="password" 
+            type="password"
+            autocomplete="current-password"
+            placeholder="Nhập mật khẩu"
+            required 
+          />
+          <button type="button" class="password-toggle" id="passwordToggle" title="Hiện/ẩn mật khẩu" aria-label="Hiện/ẩn mật khẩu">
+            <i class="fas fa-eye"></i>
+          </button>
+        </div>
+        <div id="password-strength" class="password-strength is-hidden">
           <div class="password-strength-bar"></div>
         </div>
         <div id="password-helper" class="auth-helper"></div>
@@ -540,12 +608,17 @@ function showAuth() {
           <i class="fas fa-lock"></i> Xác nhận mật khẩu
           <span class="required">*</span>
         </label>
-        <input 
-          id="passwordConfirm" 
-          type="password"
-          autocomplete="new-password"
-          placeholder="Nhập lại mật khẩu"
-        />
+        <div class="password-wrapper">
+          <input 
+            id="passwordConfirm" 
+            type="password"
+            autocomplete="new-password"
+            placeholder="Nhập lại mật khẩu"
+          />
+          <button type="button" class="password-toggle" id="passwordConfirmToggle" title="Hiện/ẩn mật khẩu" aria-label="Hiện/ẩn mật khẩu">
+            <i class="fas fa-eye"></i>
+          </button>
+        </div>
         <div id="confirm-helper" class="auth-helper"></div>
       </div>
 
@@ -553,8 +626,8 @@ function showAuth() {
         <button type="submit" id="authSubmit" class="primary">
           <i class="fas fa-sign-in-alt"></i> Đăng nhập
         </button>
-        <button type="button" id="authCancel" class="secondary" style="display:none;">
-          <i class="fas fa-times"></i> Hủy
+        <button type="button" id="authCancel" class="secondary is-hidden" title="Quay lại đăng nhập">
+          <i class="fas fa-arrow-left"></i> Quay lại
         </button>
       </div>
 
@@ -581,9 +654,39 @@ function showAuth() {
   const passwordStrengthBar = passwordStrength.querySelector(
     ".password-strength-bar"
   );
+  const passwordToggle = document.getElementById("passwordToggle");
+  const passwordConfirmToggle = document.getElementById(
+    "passwordConfirmToggle"
+  );
 
   // Mode: 'login' or 'register'
   let mode = "login";
+
+  // Password toggle visibility handlers
+  function togglePasswordVisibility(input, toggleBtn) {
+    const isPassword = input.type === "password";
+    input.type = isPassword ? "text" : "password";
+    const icon = toggleBtn.querySelector("i");
+    if (isPassword) {
+      icon.classList.remove("fa-eye");
+      icon.classList.add("fa-eye-slash");
+      toggleBtn.setAttribute("title", "Ẩn mật khẩu");
+      toggleBtn.setAttribute("aria-label", "Ẩn mật khẩu");
+    } else {
+      icon.classList.remove("fa-eye-slash");
+      icon.classList.add("fa-eye");
+      toggleBtn.setAttribute("title", "Hiện mật khẩu");
+      toggleBtn.setAttribute("aria-label", "Hiện mật khẩu");
+    }
+  }
+
+  passwordToggle.addEventListener("click", () => {
+    togglePasswordVisibility(passwordInput, passwordToggle);
+  });
+
+  passwordConfirmToggle.addEventListener("click", () => {
+    togglePasswordVisibility(passwordConfirmInput, passwordConfirmToggle);
+  });
 
   // Password strength checker
   function checkPasswordStrength(password) {
@@ -606,19 +709,20 @@ function showAuth() {
     const password = passwordInput.value;
 
     if (mode === "register" && password) {
-      passwordStrength.style.display = "block";
+      passwordStrength.classList.remove("is-hidden");
       const result = checkPasswordStrength(password);
       passwordStrengthBar.className = `password-strength-bar ${result.strength}`;
 
       if (password.length < 8) {
-        passwordHelper.textContent = "⚠️ Mật khẩu phải có ít nhất 8 ký tự";
+        passwordHelper.innerHTML =
+          '<i class="fas fa-exclamation-circle"></i> Mật khẩu phải có ít nhất 8 ký tự';
         passwordHelper.className = "auth-helper error";
       } else {
-        passwordHelper.textContent = `✓ Độ mạnh: ${result.text}`;
+        passwordHelper.innerHTML = `<i class="fas fa-check-circle"></i> Độ mạnh: ${result.text}`;
         passwordHelper.className = "auth-helper success";
       }
     } else {
-      passwordStrength.style.display = "none";
+      passwordStrength.classList.add("is-hidden");
       passwordHelper.textContent = "";
     }
 
@@ -641,10 +745,12 @@ function showAuth() {
     }
 
     if (password === confirm) {
-      confirmHelper.textContent = "✓ Mật khẩu khớp";
+      confirmHelper.innerHTML =
+        '<i class="fas fa-check-circle"></i> Mật khẩu khớp';
       confirmHelper.className = "auth-helper success";
     } else {
-      confirmHelper.textContent = "✗ Mật khẩu không khớp";
+      confirmHelper.innerHTML =
+        '<i class="fas fa-times-circle"></i> Mật khẩu không khớp';
       confirmHelper.className = "auth-helper error";
     }
   }
@@ -653,13 +759,15 @@ function showAuth() {
   document.getElementById("username").addEventListener("input", (e) => {
     const username = e.target.value.trim();
     if (username && username.length < 3) {
-      usernameHelper.textContent = "⚠️ Tên đăng nhập phải có ít nhất 3 ký tự";
+      usernameHelper.innerHTML =
+        '<i class="fas fa-exclamation-circle"></i> Tên đăng nhập phải có ít nhất 3 ký tự';
       usernameHelper.className = "auth-helper error";
     } else if (username) {
-      usernameHelper.textContent = "✓ Hợp lệ";
+      usernameHelper.innerHTML = '<i class="fas fa-check-circle"></i> Hợp lệ';
       usernameHelper.className = "auth-helper success";
     } else {
       usernameHelper.textContent = "";
+      usernameHelper.className = "auth-helper";
     }
   });
 
@@ -669,14 +777,15 @@ function showAuth() {
     passwordHelper.textContent = "";
     confirmHelper.textContent = "";
     usernameHelper.textContent = "";
-    passwordStrength.style.display = "none";
+    passwordStrength.classList.add("is-hidden");
 
     if (mode === "login") {
       fieldConfirm.classList.add("hidden");
       authSubmit.innerHTML = '<i class="fas fa-sign-in-alt"></i> Đăng nhập';
-      authCancel.style.display = "none";
+      authCancel.classList.add("is-hidden");
       authSubtitle.textContent = "Đăng nhập để truy cập hệ thống HRM";
       passwordInput.setAttribute("autocomplete", "current-password");
+      passwordConfirmInput.value = "";
       showLoginBtn.classList.add("primary");
       showLoginBtn.classList.remove("secondary");
       showRegisterBtn.classList.add("secondary");
@@ -684,7 +793,7 @@ function showAuth() {
     } else {
       fieldConfirm.classList.remove("hidden");
       authSubmit.innerHTML = '<i class="fas fa-user-plus"></i> Đăng ký';
-      authCancel.style.display = "inline-block";
+      authCancel.classList.remove("is-hidden");
       authSubtitle.textContent = "Tạo tài khoản mới • Miễn phí";
       passwordInput.setAttribute("autocomplete", "new-password");
       showRegisterBtn.classList.add("primary");
@@ -715,12 +824,14 @@ function showAuth() {
     if (!username || !password) {
       alertEl.innerHTML =
         '<div class="alert error"><i class="fas fa-exclamation-triangle"></i> Vui lòng nhập đủ thông tin bắt buộc</div>';
+      document.getElementById("username").focus();
       return;
     }
 
     if (username.length < 3) {
       alertEl.innerHTML =
         '<div class="alert error"><i class="fas fa-exclamation-triangle"></i> Tên đăng nhập phải có ít nhất 3 ký tự</div>';
+      document.getElementById("username").focus();
       return;
     }
 
@@ -728,19 +839,22 @@ function showAuth() {
       if (password.length < 8) {
         alertEl.innerHTML =
           '<div class="alert error"><i class="fas fa-exclamation-triangle"></i> Mật khẩu phải có ít nhất 8 ký tự</div>';
+        passwordInput.focus();
         return;
       }
 
       const strength = checkPasswordStrength(password);
       if (strength.score < 2) {
         alertEl.innerHTML =
-          '<div class="alert warning"><i class="fas fa-shield-alt"></i> Mật khẩu quá yếu. Vui lòng sử dụng mật khẩu mạnh hơn</div>';
+          '<div class="alert warning"><i class="fas fa-shield-alt"></i> Mật khẩu quá yếu. Vui lòng sử dụng mật khẩu mạnh hơn (gồm chữ hoa, chữ thường, số và ký tự đặc biệt)</div>';
+        passwordInput.focus();
         return;
       }
 
       if (password !== passwordConfirm) {
         alertEl.innerHTML =
           '<div class="alert error"><i class="fas fa-exclamation-triangle"></i> Mật khẩu xác nhận không khớp</div>';
+        passwordConfirmInput.focus();
         return;
       }
 
@@ -790,7 +904,8 @@ function showAuth() {
         await navigate("dashboard");
       }, 500);
     } catch (err) {
-      alertEl.innerHTML = `<div class="alert error"><i class="fas fa-times-circle"></i> ${err.message}</div>`;
+      alertEl.innerHTML = `<div class="alert error"><i class="fas fa-times-circle"></i> ${escapeHTML(err.message || "Đăng nhập thất bại")}</div>`;
+      alertEl.innerHTML = `<div class="alert error"><i class="fas fa-times-circle"></i> ${escapeHTML(err.message || "Đăng nhập thất bại")}</div>`;
       authSubmit.disabled = false;
       authSubmit.classList.remove("loading");
       authSubmit.innerHTML = originalText;

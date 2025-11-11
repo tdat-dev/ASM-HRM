@@ -1,14 +1,20 @@
+---
+alwaysApply: true
+---
+
 # Quy tắc dự án (Vanilla JS HRM)
 
 Các quy tắc bắt buộc áp dụng trong toàn bộ project. Mục tiêu: an toàn, dễ bảo trì, đồng nhất.
 
 ## 1) Kiến trúc & Module
+
 - Tách chức năng theo module trong `modules/` (mỗi module 1 nhiệm vụ).
 - Không viết logic dài trong `index.html` (chỉ là shell).
 - Không phụ thuộc lib ngoài; chỉ Vanilla JS + CSS thuần.
 - Không truy cập trực tiếp DOM trừ module UI; logic nghiệp vụ tách riêng util khi có thể.
 
 ## 2) Bảo mật (BẮT BUỘC)
+
 - Cấm dùng `innerHTML` với dữ liệu người dùng/không tin cậy. Nếu bắt buộc, phải escape trước (dùng `escapeHTML()`).
 - Cấm chèn script inline, sự kiện inline (onclick="…"). Dùng `addEventListener`.
 - Không lưu thông tin nhạy cảm (mật khẩu, token) vào LocalStorage dưới dạng plain text.
@@ -16,6 +22,7 @@ Các quy tắc bắt buộc áp dụng trong toàn bộ project. Mục tiêu: an
 - Không import tài nguyên từ nguồn không tin cậy.
 
 ## 3) UI/UX & CSS
+
 - Cấm inline style trong HTML (trừ demo/Playground). Dùng class trong `style.css`.
 - Dùng CSS variables (`--primary`, `--border`, …). Không dùng mã màu hard-code trong HTML.
 - Button/link phải có `:focus-visible`. Không tắt outline trừ khi có thay thế tương đương.
@@ -23,6 +30,7 @@ Các quy tắc bắt buộc áp dụng trong toàn bộ project. Mục tiêu: an
 - Dùng `.id-badge`, `.amount-positive/.amount-negative`, `.badge`, `.chip` thay vì style lặp lại.
 
 ## 4) JavaScript
+
 - Dùng `const/let`, cấm `var`.
 - Dùng `async/await`, cấm promise chain dài `.then().catch()` (trừ util).
 - Cấm `console.log` trong code production (chỉ cho debug tạm thời – phải xóa trước commit).
@@ -32,6 +40,7 @@ Các quy tắc bắt buộc áp dụng trong toàn bộ project. Mục tiêu: an
 - Tên biến/hàm rõ ràng, camelCase; module & file theo kebab-case; Component/Module theo PascalCase.
 
 ## 5) DOM & Template
+
 - Khi render danh sách:
   - Ưu tiên tạo DOM bằng `createElement`/`appendChild`.
   - Nếu dùng template string → escape dữ liệu người dùng bằng `escapeHTML()`.
@@ -39,26 +48,31 @@ Các quy tắc bắt buộc áp dụng trong toàn bộ project. Mục tiêu: an
 - Form phải có validation tối thiểu và hiển thị feedback.
 
 ## 6) Dữ liệu & Storage
+
 - Key LocalStorage phải có namespace `hrm_*`.
 - Hồ sơ mở rộng lưu theo `hrm_profile_{employeeId}` (avatar base64, contacts, dependents, bank, education, promotions, customFields, skills).
 - Khi thay đổi dữ liệu → cập nhật UI nhất quán (gọi rerender).
 
 ## 7) Hiệu năng
+
 - Không query DOM lặp lại trong vòng lặp lớn; cache selector.
 - Thao tác DOM hàng loạt: tạo fragment/string hoàn chỉnh rồi gán 1 lần.
 - Debounce các input search nếu cần (Directory).
 
 ## 8) Accessibility (A11y)
+
 - Tất cả nút tương tác phải có `title`/nhãn rõ ràng.
 - Trạng thái quan trọng hiển thị bằng cả icon và text/màu.
 - Focus ring hiển thị khi bàn phím điều hướng (`:focus-visible`).
 
 ## 9) Commit & Nhánh (Conventional Commits – Solo)
+
 - Format: `type(scope): subject` – ví dụ: `feat(core-hr): thêm người phụ thuộc`.
 - type hợp lệ: `feat, fix, docs, style, refactor, perf, test, chore`.
 - Nhánh: `type/short-description` – ví dụ: `feature/core-hr-profile`.
 
 ## 10) Không được làm
+
 - ❌ Inline style, sự kiện inline (onclick, oninput…).
 - ❌ Sử dụng `innerHTML` với raw data chưa escape.
 - ❌ `console.log` trong code commit.
@@ -66,6 +80,7 @@ Các quy tắc bắt buộc áp dụng trong toàn bộ project. Mục tiêu: an
 - ❌ Hard-code text nhiều nơi – dùng hằng/tham số hoặc util format.
 
 ## 11) Checklist trước khi merge
+
 - [ ] Không còn `console.log`/`debugger`.
 - [ ] Không còn inline style trong HTML.
 - [ ] Dữ liệu render đã escape qua `escapeHTML()` khi cần.
@@ -76,4 +91,3 @@ Các quy tắc bắt buộc áp dụng trong toàn bộ project. Mục tiêu: an
 ---
 
 Tuân thủ các quy tắc trên sẽ giúp code an toàn, dễ mở rộng, và thống nhất trong toàn bộ dự án.
-

@@ -1,5 +1,6 @@
 import { EmployeeDb } from "./employee-db-module.js";
 import { departmentAPI } from "../utils/api.js";
+import { showToast, escapeHTML } from "../utils/dom.js";
 
 export const DepartmentModule = {
   // Render màn hình quản lý phòng ban và xử lý CRUD đơn giản
@@ -24,7 +25,7 @@ export const DepartmentModule = {
       body.innerHTML = list
         .map(
           (department) => `<tr>
-				<td>${department.name}</td>
+				<td>${escapeHTML(department.name || "")}</td>
 				<td>
 					<button data-edit="${department.id}">Sửa</button>
 					<button data-del="${department.id}">Xóa</button>
@@ -43,9 +44,10 @@ export const DepartmentModule = {
       try {
         await departmentAPI.create({ name, manager_id: null });
         wrap.querySelector("#deptForm").reset();
+        showToast("Đã thêm phòng ban thành công.", "success");
         await render();
       } catch (error) {
-        alert(error.message || "Có lỗi xảy ra");
+        showToast(error.message || "Có lỗi xảy ra", "error");
       }
     });
 
@@ -56,9 +58,10 @@ export const DepartmentModule = {
         if (window.confirm("Xóa phòng ban?")) {
           try {
             await departmentAPI.delete(id);
+            showToast("Đã xóa phòng ban thành công.", "success");
             await render();
           } catch (error) {
-            alert(error.message || "Có lỗi xảy ra");
+            showToast(error.message || "Có lỗi xảy ra", "error");
           }
         }
       }
@@ -73,9 +76,10 @@ export const DepartmentModule = {
               name: newName.trim(),
               manager_id: dept.manager_id,
             });
+            showToast("Đã cập nhật phòng ban thành công.", "success");
             await render();
           } catch (error) {
-            alert(error.message || "Có lỗi xảy ra");
+            showToast(error.message || "Có lỗi xảy ra", "error");
           }
         }
       }

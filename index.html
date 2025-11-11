@@ -88,14 +88,6 @@
               <span>Tìm kiếm</span>
             </button>
             <button
-              data-route="core-hr"
-              class="menu-item"
-              title="Hồ sơ nhân viên (Core HR)"
-            >
-              <i class="fas fa-id-card"></i>
-              <span>Hồ sơ nhân viên</span>
-            </button>
-            <button
               data-route="directory"
               class="menu-item"
               title="Danh bạ nhân viên"
@@ -143,10 +135,6 @@
               <i class="fas fa-money-check-alt"></i>
               <span>Lương & Chấm công</span>
             </div>
-            <button data-route="salary" class="menu-item" title="Quản lý lương">
-              <i class="fas fa-dollar-sign"></i>
-              <span>Lương</span>
-            </button>
             <button data-route="attendance" class="menu-item" title="Chấm công">
               <i class="fas fa-clock"></i>
               <span>Chấm công</span>
@@ -247,13 +235,12 @@
       <main class="content">
         <header class="topbar">
           <h1 id="pageTitle">Dashboard</h1>
-          <div style="display: flex; gap: 8px; align-items: center">
+          <div class="topbar-actions">
             <button id="notifyToggle" class="secondary" title="Thông báo">
               <i class="fas fa-bell"></i>
               <span
                 id="notifyBadge"
-                class="badge danger"
-                style="display: none; margin-left: 8px"
+                class="badge danger badge-counter is-hidden"
               >
                 <span class="dot"></span><span id="notifyCount">0</span>
               </span>
@@ -267,7 +254,7 @@
       </main>
     </div>
     <!-- Floating notification panel (toggled by bell) -->
-    <div id="notifyPanel" class="notify-panel" style="display: none">
+    <div id="notifyPanel" class="notify-panel is-hidden">
       <div class="notify-header">
         <span><i class="fas fa-bell"></i> Thông báo</span>
         <div class="notify-actions">

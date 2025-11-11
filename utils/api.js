@@ -1,6 +1,7 @@
 /**
  * API Utility - Gọi backend API
  */
+import { logger } from "./logger.js";
 
 // Base URL của API - Tự động detect môi trường
 const API_BASE_URL = (() => {
@@ -61,18 +62,22 @@ export async function callAPI(endpoint, options = {}) {
     }
 
     if (!result.success) {
+      logger.warn("api_failure", {
+        url,
+        method: config.method,
+        status: response.status,
+        message: result.message || "API call failed",
+      });
       throw new Error(result.message || "API call failed");
     }
 
     return result;
   } catch (error) {
-    // Không log "Chưa đăng nhập" hoặc "Unauthorized" vì đây là trạng thái bình thường
-    if (
-      !error.message?.includes("Chưa đăng nhập") &&
-      !error.message?.includes("Unauthorized")
-    ) {
-      console.error("API Error:", error);
-    }
+    logger.error("api_exception", {
+      url,
+      method: config.method,
+      message: error?.message || "Unknown error",
+    });
     throw error;
   }
 }
@@ -133,6 +138,24 @@ export const employeeAPI = {
     }),
 
   getStats: () => callAPI("employees/stats"),
+};
+
+/**
+ * Employee Profile API
+ */
+export const employeeProfileAPI = {
+  get: (employeeId) => callAPI(`employee-profiles/${employeeId}`),
+  update: (employeeId, profileData) =>
+    callAPI(`employee-profiles/${employeeId}`, {
+      method: "PUT",
+      data: profileData,
+    }),
+  // Optional batch endpoint. Backend may not support; callers should fallback on error.
+  getMany: (employeeIds = []) =>
+    callAPI(`employee-profiles/batch`, {
+      method: "POST",
+      data: { ids: employeeIds },
+    }),
 };
 
 /**

@@ -36,15 +36,27 @@ class LeaveController {
         try {
             // Validate
             if (empty($data['employee_id']) || empty($data['start_date']) || 
-                empty($data['end_date']) || empty($data['type'])) {
+                empty($data['end_date']) || empty($data['reason'])) {
                 throw new Exception("Thiếu dữ liệu");
+            }
+            $reason = trim((string)$data['reason']);
+            if (mb_strlen($reason) < 3 || mb_strlen($reason) > 500) {
+                throw new Exception("Lý do phải từ 3 đến 500 ký tự");
+            }
+            // Leave type (classification) - default to 'annual' if not provided
+            $type = isset($data['type']) ? trim((string)$data['type']) : 'annual';
+            $allowedTypes = ['annual', 'sick', 'personal', 'unpaid', 'other'];
+            if (!in_array($type, $allowedTypes, true)) {
+                $type = 'other';
             }
             
             $leaveData = [
                 'employee_id' => $data['employee_id'],
                 'start_date' => $data['start_date'],
                 'end_date' => $data['end_date'],
-                'type' => $data['type'],
+                'reason' => $reason,
+                // Keep classification for balance and reporting
+                'type' => $type,
                 'status' => 'pending'
             ];
             

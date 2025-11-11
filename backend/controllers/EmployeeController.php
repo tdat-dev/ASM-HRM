@@ -16,12 +16,15 @@ class EmployeeController {
      */
     public function getAll() {
         try {
+            error_log("[EmployeeController] getAll() called");
             $employees = $this->employeeModel->getAllWithDetails();
+            error_log("[EmployeeController] getAllWithDetails() returned " . count($employees) . " employees");
             return [
                 'success' => true,
                 'data' => $employees
             ];
         } catch (Exception $e) {
+            error_log("[EmployeeController] Error in getAll(): " . $e->getMessage());
             return [
                 'success' => false,
                 'message' => $e->getMessage()

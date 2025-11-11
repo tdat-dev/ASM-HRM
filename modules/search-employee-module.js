@@ -1,7 +1,7 @@
 import { EmployeeDb } from "./employee-db-module.js";
 import { employeeAPI } from "../utils/api.js";
 import { validateRangeNumber } from "../utils/validators.js";
-import { renderTable } from "../utils/dom.js";
+import { renderTable, escapeHTML, showToast } from "../utils/dom.js";
 
 export const SearchEmployeeModule = {
   // Render công cụ lọc nhân viên theo regex tên, phòng ban và khoảng lương
@@ -16,7 +16,7 @@ export const SearchEmployeeModule = {
 				<div><label>Tên (regex)</label><input id="sName" placeholder="Ví dụ: ^N|Chi$" /></div>
 				<div><label>Phòng ban</label>
 					<select id="sDept"><option value="">Tất cả</option>${departments
-            .map((d) => `<option value="${d.id}">${d.name}</option>`)
+            .map((d) => `<option value="${d.id}">${escapeHTML(d.name || "")}</option>`)
             .join("")}</select>
 				</div>
 				<div style="display:flex;gap:8px;">
@@ -36,13 +36,15 @@ export const SearchEmployeeModule = {
         cell: (row) =>
           `<span style="background: var(--primary); color: white; padding: 4px 8px; border-radius: 6px; font-weight: 600; font-size: 12px;">#${row.id}</span>`,
       },
-      { header: "Tên", cell: (row) => row.name },
+      { header: "Tên", cell: (row) => escapeHTML(row.name || "-") },
       {
         header: "Phòng",
         cell: (row) =>
           departments.find(
-            (department) => Number(department.id) === Number(row.department_id)
-          )?.name || "",
+            (department) =>
+              Number(department.id) ===
+              Number(row.departmentId || row.department_id)
+          )?.name || "-",
       },
       {
         header: "Lương",
@@ -51,8 +53,44 @@ export const SearchEmployeeModule = {
     ];
 
     // Tiện ích render bảng kết quả theo danh sách đầu vào
-    const renderRows = (rows) => renderTable(tableWrap, columns, rows);
-    renderRows(await EmployeeDb.getAllEmployees());
+    const renderRows = (rows) => {
+      if (!Array.isArray(rows)) {
+        tableWrap.innerHTML =
+          '<div class="alert error"><i class="fas fa-exclamation-triangle"></i> Dữ liệu không hợp lệ: không phải mảng.</div>';
+        return;
+      }
+
+      if (rows.length === 0) {
+        tableWrap.innerHTML =
+          '<div class="alert warning"><i class="fas fa-info-circle"></i> Không tìm thấy nhân viên nào.</div>';
+        return;
+      }
+
+      renderTable(tableWrap, columns, rows);
+    };
+
+    // Load danh sách ban đầu
+    try {
+      const employees = await EmployeeDb.getAllEmployees();
+
+      if (!Array.isArray(employees)) {
+        tableWrap.innerHTML =
+          '<div class="alert error"><i class="fas fa-exclamation-triangle"></i> Không thể tải danh sách nhân viên. Vui lòng kiểm tra kết nối API.</div>';
+      } else {
+        renderRows(employees);
+      }
+    } catch (error) {
+      tableWrap.innerHTML = `<div class="alert error"><i class="fas fa-exclamation-triangle"></i> Lỗi: ${escapeHTML(
+        error.message || "Không thể tải dữ liệu"
+      )}</div>`;
+      showToast(error.message || "Không thể tải danh sách nhân viên", "error");
+    }
+
+    // Cache danh sách nhân viên đã tải để tránh gọi API lặp lại khi tìm kiếm
+    let cachedEmployees = [];
+    try {
+      cachedEmployees = await EmployeeDb.getAllEmployees();
+    } catch {}
 
     document
       .getElementById("searchForm")
@@ -69,9 +107,14 @@ export const SearchEmployeeModule = {
         );
         if (!ok) {
           renderRows([]);
+          // Xóa alert cũ nếu có
+          const oldAlert = tableWrap.querySelector(".alert");
+          if (oldAlert) oldAlert.remove();
           tableWrap.insertAdjacentHTML(
-            "beforeend",
-            `<div class="alert error">${errors.join("<br>")}</div>`
+            "afterbegin",
+            `<div class="alert error">${errors
+              .map((e) => escapeHTML(e))
+              .join("<br>")}</div>`
           );
           return;
         }
@@ -80,21 +123,25 @@ export const SearchEmployeeModule = {
         const regex = nameRe ? new RegExp(nameRe, "i") : null;
 
         try {
-          const rows = await EmployeeDb.filterEmployees((emp) => {
+          // Lọc trên dữ liệu đã cache để tránh gọi API lại
+          const source = Array.isArray(cachedEmployees) && cachedEmployees.length > 0
+            ? cachedEmployees
+            : await EmployeeDb.getAllEmployees();
+
+          const rows = source.filter((emp) => {
             const okName = regex ? regex.test(emp.name) : true;
-            const okDept = dept ? String(emp.department_id) === dept : true;
+            const empDeptId = emp.departmentId || emp.department_id;
+            const okDept = dept ? String(empDeptId) === dept : true;
             const salaryValue = Number(emp.salary);
             const okSalary = salaryValue >= nmin && salaryValue <= nmax;
+
             return okName && okDept && okSalary;
           });
           const sortedRows = rows.sort((a, b) => Number(a.id) - Number(b.id));
           renderRows(sortedRows);
         } catch (error) {
           renderRows([]);
-          tableWrap.insertAdjacentHTML(
-            "beforeend",
-            `<div class="alert error">${error.message || "Có lỗi xảy ra"}</div>`
-          );
+          showToast(error.message || "Có lỗi xảy ra khi tìm kiếm", "error");
         }
       });
   },
