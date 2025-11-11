@@ -65,6 +65,11 @@ export const DirectoryModule = {
     const drawer = wrap.querySelector("#dirDrawer");
     const drawerClose = wrap.querySelector("#drawerClose");
     const editor = createProfileEditor(editorWrapper, { showExport: false });
+    // Di chuyển drawer ra ngoài body để tránh cảm giác bị "gói" trong #view
+    // và đảm bảo lớp phủ hiển thị đúng trong mọi ngữ cảnh (z-index, overlay).
+    if (drawer && drawer.parentElement !== document.body) {
+      document.body.appendChild(drawer);
+    }
     const cardRefs = new Map();
 
     let currentItems = [...employees];
@@ -185,10 +190,24 @@ export const DirectoryModule = {
       if (drawerClose) {
         drawerClose.focus();
       }
+      document.body.classList.add("modal-open");
+      // ESC to close
+      const escHandler = (e) => {
+        if (e.key === "Escape") {
+          closeDrawer();
+        }
+      };
+      drawer._escHandler = escHandler;
+      window.addEventListener("keydown", escHandler);
     }
 
     function closeDrawer() {
       drawer.classList.add("is-hidden");
+      document.body.classList.remove("modal-open");
+      if (drawer._escHandler) {
+        window.removeEventListener("keydown", drawer._escHandler);
+        drawer._escHandler = null;
+      }
     }
 
     async function selectEmployee(employee) {
@@ -261,17 +280,9 @@ export const DirectoryModule = {
     if (drawerClose) {
       drawerClose.addEventListener("click", closeDrawer);
     }
-    if (drawer) {
-      drawer.addEventListener("click", (e) => {
-        const target = e.target;
-        if (
-          target &&
-          target.getAttribute &&
-          target.getAttribute("data-action") === "close"
-        ) {
-          closeDrawer();
-        }
-      });
+    const drawerBackdrop = drawer.querySelector(".drawer-backdrop");
+    if (drawerBackdrop) {
+      drawerBackdrop.addEventListener("click", closeDrawer);
     }
   },
 };
