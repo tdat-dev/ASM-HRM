@@ -10,10 +10,9 @@ class EmployeeProfileController
         $this->profileModel = new EmployeeProfileModel();
     }
 
-    public function getByEmployeeId($employeeId)
+    public function getByEmployeeId(int $employeeId)
     {
         try {
-            $employeeId = (int) $employeeId;
             if ($employeeId <= 0) {
                 throw new Exception('ID nhân viên không hợp lệ');
             }
@@ -32,10 +31,9 @@ class EmployeeProfileController
         }
     }
 
-    public function update($employeeId, $data)
+    public function update(int $employeeId, array $data)
     {
         try {
-            $employeeId = (int) $employeeId;
             if ($employeeId <= 0) {
                 throw new Exception('ID nhân viên không hợp lệ');
             }

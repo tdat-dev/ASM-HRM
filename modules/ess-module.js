@@ -40,6 +40,7 @@ async function getCurrentEmployee() {
 
     return emp;
   } catch (error) {
+    console.error("Lỗi khi lấy thông tin nhân viên:", error);
     return null;
   }
 }

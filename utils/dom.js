@@ -84,6 +84,14 @@ export function showAlert(container, alertType, message) {
  * @param {number} duration - Thời gian hiển thị (ms, mặc định: 3000)
  */
 export function showToast(message, type = "info", duration = 3000) {
+  // Validate type để tránh đưa giá trị không hợp lệ vào className
+  const validTypes = ["success", "error", "warning", "info"];
+  if (!validTypes.includes(type)) {
+    // Giữ log cảnh báo ở mức tối thiểu, không phá vỡ UI
+    // Fallback về 'info' nếu type không hợp lệ
+    type = "info";
+  }
+
   // Tạo container cho toast nếu chưa có
   let toastContainer = document.getElementById("toast-container");
   if (!toastContainer) {

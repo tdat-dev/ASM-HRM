@@ -68,7 +68,12 @@ export async function loadProfile(employeeId) {
 
 export async function saveProfile(employeeId, profile) {
   const normalized = normalizeProfile(profile);
-  await employeeProfileAPI.update(employeeId, normalized);
+  try {
+    await employeeProfileAPI.update(employeeId, normalized);
+  } catch (error) {
+    console.error("Failed to save profile:", error);
+    throw error;
+  }
 }
 
 export async function fileToBase64(file) {

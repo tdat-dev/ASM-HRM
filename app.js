@@ -90,18 +90,7 @@ function initTheme() {
     // Chỉ tự động đổi theme nếu chưa có lựa chọn trong localStorage
     const handleThemeChange = (e) => {
       if (!localStorage.getItem(THEME_KEY)) {
-        const root = document.documentElement;
-        root.classList.remove("theme-dark");
-        // Cập nhật icon
-        if (themeToggleBtn) {
-          themeToggleBtn.innerHTML = e.matches
-            ? '<i class="fas fa-sun"></i>'
-            : '<i class="fas fa-moon"></i>';
-          themeToggleBtn.setAttribute(
-            "title",
-            e.matches ? "Chuyển sang Light" : "Chuyển sang Dark"
-          );
-        }
+        applyTheme(e.matches ? "dark" : "light");
       }
     };
     // Modern browsers
