@@ -247,7 +247,16 @@ export const DirectoryModule = {
       if (!detailsPanel) return;
       const info = getEmployeeInfo(employee);
       const data = profile || {};
-      const avatar = info.profile_avatar || data.avatar || DEFAULT_AVATAR;
+      const rawAvatar = info.profile_avatar || data.avatar || DEFAULT_AVATAR;
+      const avatar =
+        typeof rawAvatar === "string" &&
+        (/^data:image\//i.test(rawAvatar) || /^https?:\/\//i.test(rawAvatar))
+          ? rawAvatar
+          : DEFAULT_AVATAR;
+      const safeName = escapeHTML(info.name || "");
+      const altText = safeName
+        ? `Ảnh đại diện của ${safeName}`
+        : "Ảnh đại diện nhân viên";
 
       const emergency =
         Array.isArray(data.emergencyContacts) &&
@@ -305,7 +314,7 @@ export const DirectoryModule = {
       detailsPanel.innerHTML = `
         <div class="directory-details-header">
           <div class="directory-details-avatar">
-            <img src="${avatar}" alt="" />
+            <img class="directory-details-avatar-img" src="${avatar}" alt="${altText}" />
           </div>
           <div>
             <div class="directory-details-name">
