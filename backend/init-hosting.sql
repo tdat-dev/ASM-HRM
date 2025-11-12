@@ -1,15 +1,12 @@
 -- ================================================
 -- HRM Database Schema (For Shared Hosting)
 -- ================================================
--- Lưu ý: Trước khi chạy file này:
--- 1. Tạo database trong control panel hosting
--- 2. Chọn database đó trong phpMyAdmin
--- 3. Import file SQL này
+-- Lưu ý:
+-- 1. Chọn sẵn database đã tạo trên hosting trước khi import
+-- 2. File này không tạo database mới, chỉ tạo bảng + dữ liệu mẫu
 -- ================================================
 
--- ================================================
--- 1. Bảng Users (Người dùng hệ thống)
--- ================================================
+-- 1. Users
 CREATE TABLE IF NOT EXISTS users (
     id INT PRIMARY KEY AUTO_INCREMENT,
     username VARCHAR(50) UNIQUE NOT NULL,
@@ -18,9 +15,7 @@ CREATE TABLE IF NOT EXISTS users (
     INDEX idx_username (username)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
--- ================================================
--- 2. Bảng Departments (Phòng ban)
--- ================================================
+-- 2. Departments
 CREATE TABLE IF NOT EXISTS departments (
     id INT PRIMARY KEY AUTO_INCREMENT,
     name VARCHAR(100) NOT NULL UNIQUE,
@@ -29,9 +24,7 @@ CREATE TABLE IF NOT EXISTS departments (
     INDEX idx_name (name)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
--- ================================================
--- 3. Bảng Positions (Vị trí/Chức danh)
--- ================================================
+-- 3. Positions
 CREATE TABLE IF NOT EXISTS positions (
     id INT PRIMARY KEY AUTO_INCREMENT,
     title VARCHAR(100) NOT NULL UNIQUE,
@@ -40,27 +33,30 @@ CREATE TABLE IF NOT EXISTS positions (
     INDEX idx_title (title)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
--- ================================================
--- 4. Bảng Employees (Nhân viên)
--- ================================================
+-- 4. Employees
 CREATE TABLE IF NOT EXISTS employees (
     id INT PRIMARY KEY AUTO_INCREMENT,
     name VARCHAR(100) NOT NULL,
     department_id INT NOT NULL,
     position_id INT NOT NULL,
     salary DECIMAL(12, 2) NOT NULL DEFAULT 0,
+    bonus DECIMAL(12, 2) DEFAULT 0,
+    deduction DECIMAL(12, 2) DEFAULT 0,
     phone VARCHAR(20),
     email VARCHAR(100),
-    hire_date DATE,
+    hire_date DATE NOT NULL,
     status ENUM('active', 'inactive') DEFAULT 'active',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (department_id) REFERENCES departments(id) ON DELETE RESTRICT,
+    FOREIGN KEY (position_id) REFERENCES positions(id) ON DELETE RESTRICT,
     INDEX idx_name (name),
     INDEX idx_status (status),
-    FOREIGN KEY (department_id) REFERENCES departments(id) ON DELETE RESTRICT,
-    FOREIGN KEY (position_id) REFERENCES positions(id) ON DELETE RESTRICT
+    INDEX idx_department (department_id),
+    INDEX idx_position (position_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
--- Hồ sơ mở rộng
+-- 4.1 Employee profiles & phụ bảng
 CREATE TABLE IF NOT EXISTS employee_profiles (
     employee_id INT PRIMARY KEY,
     avatar LONGTEXT,
@@ -89,7 +85,7 @@ CREATE TABLE IF NOT EXISTS employee_dependents (
     employee_id INT NOT NULL,
     name VARCHAR(120) NOT NULL,
     relation VARCHAR(80),
-    dob DATE NULL,
+    dob DATE,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (employee_id) REFERENCES employees(id) ON DELETE CASCADE,
     INDEX idx_employee (employee_id)
@@ -128,97 +124,96 @@ CREATE TABLE IF NOT EXISTS employee_custom_fields (
     INDEX idx_field_key (field_key)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
--- ================================================
--- 5. Bảng Attendance (Chấm công)
--- ================================================
+-- 5. Attendance
 CREATE TABLE IF NOT EXISTS attendance (
     id INT PRIMARY KEY AUTO_INCREMENT,
     employee_id INT NOT NULL,
     date DATE NOT NULL,
-    check_in TIME,
-    check_out TIME,
+    check_in DATETIME NULL,
+    check_out DATETIME NULL,
     status ENUM('present', 'absent', 'late', 'leave') DEFAULT 'present',
     notes TEXT,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    INDEX idx_employee_date (employee_id, date),
-    FOREIGN KEY (employee_id) REFERENCES employees(id) ON DELETE CASCADE
+    FOREIGN KEY (employee_id) REFERENCES employees(id) ON DELETE CASCADE,
+    UNIQUE KEY unique_attendance (employee_id, date),
+    INDEX idx_employee_date (employee_id, date)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
--- ================================================
--- 6. Bảng Leave Requests (Yêu cầu nghỉ phép)
--- ================================================
-CREATE TABLE IF NOT EXISTS leave_requests (
+-- 6. Leaves
+CREATE TABLE IF NOT EXISTS leaves (
     id INT PRIMARY KEY AUTO_INCREMENT,
     employee_id INT NOT NULL,
-    leave_type ENUM('sick', 'annual', 'personal', 'unpaid') NOT NULL,
     start_date DATE NOT NULL,
     end_date DATE NOT NULL,
+    type VARCHAR(32) DEFAULT 'annual',
     reason TEXT,
     status ENUM('pending', 'approved', 'rejected') DEFAULT 'pending',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    INDEX idx_employee_status (employee_id, status),
-    INDEX idx_dates (start_date, end_date),
-    FOREIGN KEY (employee_id) REFERENCES employees(id) ON DELETE CASCADE
+    FOREIGN KEY (employee_id) REFERENCES employees(id) ON DELETE CASCADE,
+    INDEX idx_employee (employee_id),
+    INDEX idx_status (status),
+    INDEX idx_leaves_type_status_employee (type, status, employee_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
--- ================================================
--- 7. Bảng Performance Reviews (Đánh giá hiệu suất)
--- ================================================
-CREATE TABLE IF NOT EXISTS performance_reviews (
+-- 7. Performance Reviews
+CREATE TABLE IF NOT EXISTS reviews (
     id INT PRIMARY KEY AUTO_INCREMENT,
     employee_id INT NOT NULL,
-    review_date DATE NOT NULL,
-    reviewer_name VARCHAR(100),
     rating INT CHECK (rating BETWEEN 1 AND 5),
-    comments TEXT,
+    feedback TEXT,
+    review_date DATE NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    INDEX idx_employee_date (employee_id, review_date),
-    FOREIGN KEY (employee_id) REFERENCES employees(id) ON DELETE CASCADE
+    FOREIGN KEY (employee_id) REFERENCES employees(id) ON DELETE CASCADE,
+    INDEX idx_employee (employee_id),
+    INDEX idx_rating (rating)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
--- ================================================
--- Thêm Foreign Key cho bảng Departments
--- ================================================
-ALTER TABLE departments 
-ADD CONSTRAINT fk_dept_manager 
+-- Liên kết manager_id của phòng ban
+ALTER TABLE departments
+ADD CONSTRAINT fk_dept_manager
 FOREIGN KEY (manager_id) REFERENCES employees(id) ON DELETE SET NULL;
 
 -- ================================================
--- Dữ liệu mẫu (Sample Data)
+-- DỮ LIỆU MẪU
 -- ================================================
 
--- User mặc định
--- Username: admin
--- Password: 123456
-INSERT INTO users (username, password) VALUES 
-('admin', '$2y$10$eXVqZ8jF7.nY2nKjXxWxZuqh1qH4RdJ5YVN/8VzqJhXtJYNLKXxGy')
-ON DUPLICATE KEY UPDATE username = username;
+DELETE FROM users WHERE username = 'admin';
 
--- Phòng ban mẫu
-INSERT INTO departments (name) VALUES 
-('IT'),
-('HR'),
-('Finance'),
-('Marketing'),
-('Sales')
+INSERT INTO users (username, password, created_at) VALUES
+('admin', '$2y$10$Y/czLvdNopHyWnMGV1Ej2OTrC/OwApczdCYJqviQBjW70zSz44t9O', NOW());
+
+INSERT INTO departments (id, name, manager_id) VALUES
+(1, 'Kinh doanh', NULL),
+(2, 'Kỹ thuật', NULL),
+(3, 'Nhân sự', NULL)
 ON DUPLICATE KEY UPDATE name = VALUES(name);
 
--- Vị trí mẫu
-INSERT INTO positions (title, description) VALUES 
-('Developer', 'Software Developer'),
-('Manager', 'Department Manager'),
-('HR Specialist', 'Human Resources Specialist'),
-('Accountant', 'Financial Accountant'),
-('Marketing Executive', 'Marketing Professional'),
-('Sales Representative', 'Sales Professional')
+INSERT INTO positions (id, title, description) VALUES
+(1, 'Nhân viên', 'Staff'),
+(2, 'Trưởng nhóm', 'Leader'),
+(3, 'Quản lý', 'Manager')
 ON DUPLICATE KEY UPDATE title = VALUES(title);
 
--- Nhân viên mẫu
-INSERT INTO employees (name, department_id, position_id, salary, phone, email, hire_date) VALUES 
-('Nguyễn Văn A', 1, 1, 15000000, '0901234567', 'nguyenvana@example.com', '2023-01-15'),
-('Trần Thị B', 2, 3, 12000000, '0912345678', 'tranthib@example.com', '2023-02-20'),
-('Lê Văn C', 3, 4, 13000000, '0923456789', 'levanc@example.com', '2023-03-10'),
-('Phạm Thị D', 4, 5, 11000000, '0934567890', 'phamthid@example.com', '2023-04-05'),
-('Hoàng Văn E', 5, 6, 14000000, '0945678901', 'hoangvane@example.com', '2023-05-12')
+INSERT INTO employees (id, name, department_id, position_id, salary, bonus, deduction, phone, email, hire_date, status) VALUES
+(1001, 'Nguyễn An', 1, 1, 9000000.00, 100.00, 0.00, '0900000001', 'nguyen.an@example.com', '2023-06-10', 'active'),
+(1002, 'Trần Bình', 2, 2, 13000000.00, 50.00, 20.00, '0900000002', 'tran.binh@example.com', '2022-11-01', 'active'),
+(1003, 'Lê Chi', 3, 1, 8500000.00, 0.00, 0.00, '0900000003', 'le.chi@example.com', '2024-02-15', 'active'),
+(1004, 'Phạm Dũng', 2, 3, 2100000.00, 200.00, 50.00, '0900000004', 'pham.dung@example.com', '2021-09-05', 'active'),
+(1005, 'Võ Em', 1, 1, 8000000.00, 0.00, 0.00, '0900000005', 'vo.em@example.com', '2025-01-20', 'active')
 ON DUPLICATE KEY UPDATE name = VALUES(name);
+
+INSERT INTO attendance (employee_id, date, check_in, check_out, status) VALUES
+(1001, CURDATE(), CONCAT(CURDATE(), ' 08:00:00'), CONCAT(CURDATE(), ' 17:00:00'), 'present'),
+(1002, CURDATE(), CONCAT(CURDATE(), ' 08:15:00'), NULL, 'late')
+ON DUPLICATE KEY UPDATE status = VALUES(status);
+
+INSERT INTO leaves (employee_id, start_date, end_date, type, reason, status) VALUES
+(1001, '2025-11-01', '2025-11-03', 'annual', 'Nghỉ phép năm', 'pending'),
+(1003, '2025-10-25', '2025-10-26', 'sick', 'Nghỉ ốm', 'approved')
+ON DUPLICATE KEY UPDATE status = VALUES(status);
+
+INSERT INTO reviews (employee_id, rating, feedback, review_date) VALUES
+(1001, 5, 'Excellent work!', CURDATE()),
+(1002, 4, 'Good performance', CURDATE()),
+(1004, 5, 'Outstanding leadership', CURDATE())
+ON DUPLICATE KEY UPDATE rating = VALUES(rating);

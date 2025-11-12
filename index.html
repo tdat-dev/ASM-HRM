@@ -24,6 +24,8 @@
             class="sidebar-toggle"
             id="sidebarToggle"
             title="Thu gọn menu"
+            type="button"
+            data-sidebar-toggle="true"
           >
             <i class="fas fa-bars"></i>
           </button>
@@ -62,22 +64,6 @@
             >
               <i class="fas fa-user-plus"></i>
               <span>Thêm Nhân viên</span>
-            </button>
-            <button
-              data-route="employees-edit"
-              class="menu-item"
-              title="Chỉnh sửa thông tin"
-            >
-              <i class="fas fa-user-edit"></i>
-              <span>Sửa Nhân viên</span>
-            </button>
-            <button
-              data-route="employees-delete"
-              class="menu-item"
-              title="Xóa nhân viên"
-            >
-              <i class="fas fa-user-minus"></i>
-              <span>Xóa Nhân viên</span>
             </button>
             <button
               data-route="employees-search"
@@ -234,6 +220,16 @@
       </aside>
       <main class="content">
         <header class="topbar">
+          <button
+            id="sidebarToggleMobile"
+            class="topbar-menu-toggle"
+            type="button"
+            title="Mở menu"
+            aria-label="Mở menu"
+            data-sidebar-toggle="true"
+          >
+            <i class="fas fa-bars"></i>
+          </button>
           <h1 id="pageTitle">Dashboard</h1>
           <div class="topbar-actions">
             <button id="notifyToggle" class="secondary" title="Thông báo">

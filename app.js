@@ -34,12 +34,75 @@ const notifyPanel = document.getElementById("notifyPanel");
 const notifyList = document.getElementById("notifyList");
 const notifyClose = document.getElementById("notifyClose");
 const notifyMarkAll = document.getElementById("notifyMarkAll");
-const sidebarToggleBtn = document.getElementById("sidebarToggle");
+const sidebarToggleButtons = Array.from(
+  document.querySelectorAll('[data-sidebar-toggle="true"]')
+);
+const sidebarToggleMobileBtn = document.getElementById("sidebarToggleMobile");
+let lastSidebarToggleBtn = sidebarToggleButtons[0] || null;
 const sidebar = document.querySelector(".sidebar");
 
 const THEME_KEY = "hrm_theme";
 const SIDEBAR_KEY = "hrm_sidebar_collapsed";
 const LAST_ROUTE_KEY = "hrm_last_route";
+const MOBILE_BREAKPOINT = 900;
+const mobileViewport = window.matchMedia(`(max-width: ${MOBILE_BREAKPOINT}px)`);
+let sidebarEscHandler = null;
+
+function isMobileView() {
+  return mobileViewport.matches;
+}
+
+function closeSidebarMobile({ focusToggle = false } = {}) {
+  if (!sidebar) return;
+  sidebar.classList.remove("open");
+  document.body.classList.remove("sidebar-open");
+  sidebar.setAttribute("aria-expanded", "false");
+  if (sidebarEscHandler) {
+    window.removeEventListener("keydown", sidebarEscHandler);
+    sidebarEscHandler = null;
+  }
+  if (focusToggle) {
+    const fallbackToggle = isMobileView()
+      ? sidebarToggleMobileBtn
+      : sidebarToggleButtons[0];
+    const focusTarget =
+      lastSidebarToggleBtn || fallbackToggle || sidebarToggleButtons[0];
+    if (focusTarget) {
+      focusTarget.focus();
+    }
+  }
+}
+
+function openSidebarMobile() {
+  if (!sidebar) return;
+  sidebar.classList.add("open");
+  document.body.classList.add("sidebar-open");
+  sidebar.setAttribute("aria-expanded", "true");
+  if (!sidebarEscHandler) {
+    sidebarEscHandler = (event) => {
+      if (event.key === "Escape") {
+        closeSidebarMobile({ focusToggle: true });
+      }
+    };
+    window.addEventListener("keydown", sidebarEscHandler);
+  }
+}
+
+function applySidebarState() {
+  if (!sidebar) return;
+  if (isMobileView()) {
+    sidebar.classList.remove("collapsed");
+    lastSidebarToggleBtn =
+      sidebarToggleMobileBtn || sidebarToggleButtons[0] || null;
+    closeSidebarMobile();
+    return;
+  }
+  closeSidebarMobile();
+  const isCollapsed = localStorage.getItem(SIDEBAR_KEY) === "true";
+  sidebar.classList.toggle("collapsed", isCollapsed);
+  sidebar.setAttribute("aria-expanded", String(!isCollapsed));
+  lastSidebarToggleBtn = sidebarToggleButtons[0] || null;
+}
 
 // Lọc menu theo role
 function applyRoleUI(role) {
@@ -114,17 +177,19 @@ function applyTheme(theme) {
 
 // Toggle sidebar collapsed/expanded
 function toggleSidebar() {
+  if (!sidebar) return;
+  if (isMobileView()) {
+    if (sidebar.classList.contains("open")) {
+      closeSidebarMobile({ focusToggle: true });
+    } else {
+      openSidebarMobile();
+    }
+    return;
+  }
   sidebar.classList.toggle("collapsed");
   const isCollapsed = sidebar.classList.contains("collapsed");
-  localStorage.setItem(SIDEBAR_KEY, isCollapsed);
-}
-
-// Load sidebar state
-function loadSidebarState() {
-  const isCollapsed = localStorage.getItem(SIDEBAR_KEY) === "true";
-  if (isCollapsed) {
-    sidebar.classList.add("collapsed");
-  }
+  localStorage.setItem(SIDEBAR_KEY, String(isCollapsed));
+  sidebar.setAttribute("aria-expanded", String(!isCollapsed));
 }
 
 // Khởi động cơ chế theme: đọc lựa chọn trước đó hoặc theo hệ thống
@@ -163,10 +228,27 @@ function initTheme() {
   }
 
   // Sidebar toggle
-  loadSidebarState();
-  if (sidebarToggleBtn) {
-    sidebarToggleBtn.addEventListener("click", toggleSidebar);
+  applySidebarState();
+  if (mobileViewport.addEventListener) {
+    mobileViewport.addEventListener("change", applySidebarState);
+  } else {
+    mobileViewport.addListener(applySidebarState);
   }
+  sidebarToggleButtons.forEach((btn) => {
+    btn.addEventListener("click", () => {
+      lastSidebarToggleBtn = btn;
+      toggleSidebar();
+    });
+  });
+  document.addEventListener("click", (event) => {
+    if (!isMobileView()) return;
+    if (!sidebar || !sidebar.classList.contains("open")) return;
+    if (sidebar.contains(event.target)) return;
+    if (sidebarToggleButtons.some((btn) => btn.contains(event.target))) return;
+    closeSidebarMobile();
+    event.preventDefault();
+    event.stopPropagation();
+  });
 }
 
 // Cập nhật badge thông báo (số chưa đọc)
@@ -508,6 +590,9 @@ function registerMenuHandlers() {
   document.querySelectorAll(".menu [data-route]").forEach((btn) => {
     btn.addEventListener("click", async () => {
       await navigate(btn.getAttribute("data-route"));
+      if (isMobileView()) {
+        closeSidebarMobile();
+      }
     });
   });
 }

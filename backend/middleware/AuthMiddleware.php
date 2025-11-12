@@ -11,6 +11,7 @@ class AuthMiddleware {
     private static $publicRoutes = [
         'POST:auth/login',
         'POST:auth/register',
+        'POST:auth/logout',
         'GET:auth/session', // Cho phép check session
         'OPTIONS:', // Preflight requests
     ];

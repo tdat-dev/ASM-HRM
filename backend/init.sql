@@ -204,12 +204,12 @@ INSERT INTO positions (id, title, description) VALUES
 (3, 'Quản lý', 'Manager');
 
 -- Insert Employees
-INSERT INTO employees (id, name, department_id, position_id, salary, bonus, deduction, hire_date) VALUES 
-(1001, 'Nguyễn An', 1, 1, 900.00, 100.00, 0.00, '2023-06-10'),
-(1002, 'Trần Bình', 2, 2, 1300.00, 50.00, 20.00, '2022-11-01'),
-(1003, 'Lê Chi', 3, 1, 850.00, 0.00, 0.00, '2024-02-15'),
-(1004, 'Phạm Dũng', 2, 3, 2100.00, 200.00, 50.00, '2021-09-05'),
-(1005, 'Võ Em', 1, 1, 800.00, 0.00, 0.00, '2025-01-20');
+INSERT INTO employees (id, name, department_id, position_id, salary, bonus, deduction, phone, email, hire_date, status) VALUES
+(1001, 'Nguyễn An', 1, 1, 9000000.00, 100.00, 0.00, '0900000001', 'nguyen.an@example.com', '2023-06-10', 'active'),
+(1002, 'Trần Bình', 2, 2, 13000000.00, 50.00, 20.00, '0900000002', 'tran.binh@example.com', '2022-11-01', 'active'),
+(1003, 'Lê Chi', 3, 1, 8500000.00, 0.00, 0.00, '0900000003', 'le.chi@example.com', '2024-02-15', 'active'),
+(1004, 'Phạm Dũng', 2, 3, 2100000.00, 200.00, 50.00, '0900000004', 'pham.dung@example.com', '2021-09-05', 'active'),
+(1005, 'Võ Em', 1, 1, 8000000.00, 0.00, 0.00, '0900000005', 'vo.em@example.com', '2025-01-20', 'active');
 
 -- Insert Attendance mẫu
 INSERT INTO attendance (employee_id, date, check_in, check_out) VALUES 
