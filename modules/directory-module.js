@@ -1,6 +1,7 @@
 import { EmployeeDb } from "./employee-db-module.js";
 import { escapeHTML, showToast } from "../utils/dom.js";
 import { createProfileEditor, DEFAULT_AVATAR } from "./profile-editor.js";
+import { AuthModule } from "./auth-module.js";
 import { loadProfile, saveProfile } from "./profile-store.js";
 
 export const DirectoryModule = {
@@ -64,11 +65,32 @@ export const DirectoryModule = {
     const editorWrapper = wrap.querySelector("#dirEditorWrapper");
     const drawer = wrap.querySelector("#dirDrawer");
     const drawerClose = wrap.querySelector("#drawerClose");
-    const editor = createProfileEditor(editorWrapper, { showExport: false });
+    const layoutEl = wrap.querySelector(".directory-layout");
+    const session = await AuthModule.getSession();
+    const role = session?.role || "employee";
+    const canEdit = role === "admin" || role === "hr";
+    const editor = canEdit
+      ? createProfileEditor(editorWrapper, { showExport: false })
+      : null;
+
+    // Với role chỉ xem (manager/employee), không hiển thị drawer chỉnh sửa
+    if (!canEdit && drawer) {
+      drawer.remove();
+    }
+
     // Di chuyển drawer ra ngoài body để tránh cảm giác bị "gói" trong #view
     // và đảm bảo lớp phủ hiển thị đúng trong mọi ngữ cảnh (z-index, overlay).
-    if (drawer && drawer.parentElement !== document.body) {
+    if (canEdit && drawer && drawer.parentElement !== document.body) {
       document.body.appendChild(drawer);
+    }
+
+    // Panel hiển thị thông tin read-only khi không có quyền chỉnh sửa
+    let detailsPanel = null;
+    if (layoutEl) {
+      detailsPanel = document.createElement("div");
+      detailsPanel.id = "dirDetails";
+      detailsPanel.className = "directory-details card is-hidden";
+      layoutEl.appendChild(detailsPanel);
     }
     const cardRefs = new Map();
 
@@ -78,36 +100,40 @@ export const DirectoryModule = {
     let currentSortOrder = "asc"; // 'asc' | 'desc'
     const collator = new Intl.Collator("vi", { sensitivity: "base" });
 
-    editor.onSave(async (employee, profile) => {
-      if (!employee) return;
-      try {
-        await saveProfile(employee.id, profile);
-        showToast("Đã lưu hồ sơ.", "success");
-        const updatedEmployee = {
-          ...employee,
-          profile_skills: profile.skills,
-          profile_avatar: profile.avatar,
-        };
-        const indexAll = employees.findIndex((item) => item.id === employee.id);
-        if (indexAll !== -1) {
-          employees[indexAll] = updatedEmployee;
+    if (editor) {
+      editor.onSave(async (employee, profile) => {
+        if (!employee) return;
+        try {
+          await saveProfile(employee.id, profile);
+          showToast("Đã lưu hồ sơ.", "success");
+          const updatedEmployee = {
+            ...employee,
+            profile_skills: profile.skills,
+            profile_avatar: profile.avatar,
+          };
+          const indexAll = employees.findIndex(
+            (item) => item.id === employee.id
+          );
+          if (indexAll !== -1) {
+            employees[indexAll] = updatedEmployee;
+          }
+          const indexCurrent = currentItems.findIndex(
+            (item) => item.id === employee.id
+          );
+          if (indexCurrent !== -1) {
+            currentItems[indexCurrent] = updatedEmployee;
+          }
+          applySortAndRender();
+        } catch (error) {
+          showToast(
+            error.message || "Không thể lưu hồ sơ. Vui lòng thử lại.",
+            "error"
+          );
         }
-        const indexCurrent = currentItems.findIndex(
-          (item) => item.id === employee.id
-        );
-        if (indexCurrent !== -1) {
-          currentItems[indexCurrent] = updatedEmployee;
-        }
-        applySortAndRender();
-      } catch (error) {
-        showToast(
-          error.message || "Không thể lưu hồ sơ. Vui lòng thử lại.",
-          "error"
-        );
-      }
-    });
+      });
 
-    editor.onExport(() => {});
+      editor.onExport(() => {});
+    }
 
     function getEmployeeInfo(employee) {
       return {
@@ -153,7 +179,8 @@ export const DirectoryModule = {
       items.forEach((employee) => {
         const avatar = employee.profile_avatar || DEFAULT_AVATAR;
         const safeAvatar =
-          typeof avatar === "string" && (/^data:image\//i.test(avatar) || /^https?:\/\//i.test(avatar))
+          typeof avatar === "string" &&
+          (/^data:image\//i.test(avatar) || /^https?:\/\//i.test(avatar))
             ? avatar
             : DEFAULT_AVATAR;
         const skills = employee.profile_skills || "";
@@ -190,6 +217,7 @@ export const DirectoryModule = {
     }
 
     function openDrawer() {
+      if (!canEdit || !drawer) return;
       drawer.classList.remove("is-hidden");
       if (drawerClose) {
         drawerClose.focus();
@@ -206,6 +234,7 @@ export const DirectoryModule = {
     }
 
     function closeDrawer() {
+      if (!canEdit || !drawer) return;
       drawer.classList.add("is-hidden");
       document.body.classList.remove("modal-open");
       if (drawer._escHandler) {
@@ -214,11 +243,110 @@ export const DirectoryModule = {
       }
     }
 
+    function renderDetails(employee, profile) {
+      if (!detailsPanel) return;
+      const info = getEmployeeInfo(employee);
+      const data = profile || {};
+      const rawAvatar = info.profile_avatar || data.avatar || DEFAULT_AVATAR;
+      const avatar =
+        typeof rawAvatar === "string" &&
+        (/^data:image\//i.test(rawAvatar) || /^https?:\/\//i.test(rawAvatar))
+          ? rawAvatar
+          : DEFAULT_AVATAR;
+      const safeName = escapeHTML(info.name || "");
+      const altText = safeName
+        ? `Ảnh đại diện của ${safeName}`
+        : "Ảnh đại diện nhân viên";
+
+      const emergency =
+        Array.isArray(data.emergencyContacts) &&
+        data.emergencyContacts.length > 0
+          ? `<section>
+               <h4>Liên hệ khẩn cấp</h4>
+               <ul>
+                 ${data.emergencyContacts
+                   .map(
+                     (c) =>
+                       `<li><strong>${escapeHTML(
+                         c.name || ""
+                       )}</strong> • ${escapeHTML(
+                         c.relation || "-"
+                       )} • ${escapeHTML(c.phone || "-")}</li>`
+                   )
+                   .join("")}
+               </ul>
+             </section>`
+          : "";
+
+      const dependents =
+        Array.isArray(data.dependents) && data.dependents.length > 0
+          ? `<section>
+               <h4>Người phụ thuộc</h4>
+               <ul>
+                 ${data.dependents
+                   .map(
+                     (d) =>
+                       `<li><strong>${escapeHTML(
+                         d.name || ""
+                       )}</strong> • ${escapeHTML(
+                         d.relation || "-"
+                       )} • ${escapeHTML(d.dob || "-")}</li>`
+                   )
+                   .join("")}
+               </ul>
+             </section>`
+          : "";
+
+      const skillsSection = data.skills
+        ? `<section>
+             <h4>Kỹ năng</h4>
+             <p>${escapeHTML(data.skills)}</p>
+           </section>`
+        : "";
+
+      const bank =
+        data.bank?.bankName || data.bank?.accountNumber
+          ? `<div class="muted">Ngân hàng: ${escapeHTML(
+              data.bank.bankName || "-"
+            )} • ${escapeHTML(data.bank.accountNumber || "-")}</div>`
+          : "";
+
+      detailsPanel.innerHTML = `
+        <div class="directory-details-header">
+          <div class="directory-details-avatar">
+            <img class="directory-details-avatar-img" src="${avatar}" alt="${altText}" />
+          </div>
+          <div>
+            <div class="directory-details-name">
+              <span class="id-badge">#${info.id}</span>
+              <strong>${escapeHTML(info.name || "")}</strong>
+            </div>
+            <div class="muted">${escapeHTML(info.positionTitle)} • ${escapeHTML(
+        info.departmentName
+      )}</div>
+            ${bank}
+          </div>
+        </div>
+        ${
+          skillsSection || emergency || dependents
+            ? `${skillsSection}${emergency}${dependents}`
+            : '<p class="muted">Chưa có hồ sơ bổ sung.</p>'
+        }
+      `;
+      detailsPanel.classList.remove("is-hidden");
+    }
+
     async function selectEmployee(employee) {
       activeEmployeeId = employee.id;
       const profile = await loadProfile(employee.id);
-      editor.setEmployee(getEmployeeInfo(employee), profile);
-      openDrawer();
+
+      if (canEdit && editor) {
+        editor.setEmployee(getEmployeeInfo(employee), profile);
+        openDrawer();
+      } else {
+        renderDetails(employee, profile);
+      }
+
       cardRefs.forEach((card, id) => {
         if (Number(id) === employee.id) {
           card.classList.add("active");
@@ -281,12 +409,14 @@ export const DirectoryModule = {
       applySortAndRender();
     });
 
-    if (drawerClose) {
+    if (canEdit && drawerClose) {
       drawerClose.addEventListener("click", closeDrawer);
     }
-    const drawerBackdrop = drawer.querySelector(".drawer-backdrop");
-    if (drawerBackdrop) {
-      drawerBackdrop.addEventListener("click", closeDrawer);
+    if (canEdit && drawer) {
+      const drawerBackdrop = drawer.querySelector(".drawer-backdrop");
+      if (drawerBackdrop) {
+        drawerBackdrop.addEventListener("click", closeDrawer);
+      }
     }
   },
 };

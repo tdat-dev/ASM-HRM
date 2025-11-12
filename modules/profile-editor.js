@@ -7,7 +7,10 @@ export const DEFAULT_AVATAR =
     `<svg xmlns="http://www.w3.org/2000/svg" width="120" height="120" viewBox="0 0 120 120" fill="none"><rect width="120" height="120" rx="60" fill="#E2E8F0"/><path d="M60 58C67.732 58 74 51.732 74 44C74 36.268 67.732 30 60 30C52.268 30 46 36.268 46 44C46 51.732 52.268 58 60 58Z" fill="#94A3B8"/><path d="M94 92C94 76.536 78.225 66 60 66C41.775 66 26 76.536 26 92" stroke="#94A3B8" stroke-width="8" stroke-linecap="round"/></svg>`
   );
 
-export function createProfileEditor(rootEl, { showExport = true } = {}) {
+export function createProfileEditor(
+  rootEl,
+  { showExport = true, readOnly = false } = {}
+) {
   rootEl.innerHTML = `
     <div class="profile-editor is-hidden">
       <div class="profile-avatar-block">
@@ -87,6 +90,34 @@ export function createProfileEditor(rootEl, { showExport = true } = {}) {
 
   if (!showExport) {
     exportBtn.classList.add("is-hidden");
+  }
+
+  // Chế độ chỉ xem: ẩn các nút thêm/xóa và vô hiệu hóa input + nút lưu
+  if (readOnly) {
+    editorEl.classList.add("is-readonly");
+    // Ẩn các nút thao tác thêm/xóa và lưu
+    editorEl
+      .querySelectorAll(
+        ".profile-add-btn, .profile-list-item-actions, .profile-save-btn, .profile-upload-btn"
+      )
+      .forEach((el) => {
+        el.classList.add("is-hidden");
+      });
+    // Khóa tất cả input trong editor
+    editorEl
+      .querySelectorAll("input, textarea, select, button")
+      .forEach((el) => {
+        if (el.classList.contains("profile-export-btn")) return; // vẫn cho phép export nếu được bật
+        if (el.matches(".profile-save-btn")) return;
+        if (el.matches(".profile-add-btn")) return;
+        if (el.id === "drawerClose") return;
+        if (el.closest(".drawer-backdrop")) return;
+        try {
+          el.setAttribute("disabled", "true");
+          el.setAttribute("aria-disabled", "true");
+          el.classList.add("is-disabled");
+        } catch {}
+      });
   }
 
   const listContainers = {

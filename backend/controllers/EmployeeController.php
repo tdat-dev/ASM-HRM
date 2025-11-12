@@ -10,6 +10,19 @@ class EmployeeController {
     public function __construct() {
         $this->employeeModel = new EmployeeModel();
     }
+
+    /**
+     * Ẩn thông tin nhạy cảm dựa trên vai trò
+     */
+    private function applyPrivacyFilter(&$employee) {
+        if (!is_array($employee)) {
+            return;
+        }
+
+        if (isset($_SESSION['role']) && $_SESSION['role'] === 'manager') {
+            unset($employee['salary'], $employee['bonus'], $employee['deduction']);
+        }
+    }
     
     /**
      * Lấy tất cả nhân viên
@@ -18,6 +31,11 @@ class EmployeeController {
         try {
             error_log("[EmployeeController] getAll() called");
             $employees = $this->employeeModel->getAllWithDetails();
+
+            foreach ($employees as &$employee) {
+                $this->applyPrivacyFilter($employee);
+            }
+            unset($employee);
             error_log("[EmployeeController] getAllWithDetails() returned " . count($employees) . " employees");
             return [
                 'success' => true,
@@ -45,6 +63,8 @@ class EmployeeController {
                     'message' => 'Không tìm thấy nhân viên'
                 ];
             }
+
+            $this->applyPrivacyFilter($employee);
             
             return [
                 'success' => true,
@@ -155,6 +175,11 @@ class EmployeeController {
     public function search($filters) {
         try {
             $employees = $this->employeeModel->search($filters);
+
+            foreach ($employees as &$employee) {
+                $this->applyPrivacyFilter($employee);
+            }
+            unset($employee);
             
             return [
                 'success' => true,

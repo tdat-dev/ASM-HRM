@@ -123,6 +123,13 @@ class AuthController {
                 
                 $_SESSION['user_id'] = $user['id'];
                 $_SESSION['username'] = $user['username'];
+                // Simple demo role mapping; in production, load from DB
+                $uname = strtolower($user['username']);
+                $role = 'employee';
+                if ($uname === 'admin') $role = 'admin';
+                elseif ($uname === 'hr') $role = 'hr';
+                elseif ($uname === 'manager') $role = 'manager';
+                $_SESSION['role'] = $role;
                 $_SESSION['login_time'] = time();
                 $_SESSION['ip_address'] = $_SERVER['REMOTE_ADDR'] ?? 'unknown';
                 
@@ -131,7 +138,8 @@ class AuthController {
                     'message' => 'Đăng nhập thành công',
                     'data' => [
                         'id' => $user['id'],
-                        'username' => $user['username']
+                        'username' => $user['username'],
+                        'role' => $_SESSION['role']
                     ]
                 ];
             }
@@ -256,7 +264,8 @@ class AuthController {
                 'success' => true,
                 'data' => [
                     'id' => $_SESSION['user_id'],
-                    'username' => $_SESSION['username']
+                    'username' => $_SESSION['username'],
+                    'role' => $_SESSION['role'] ?? 'employee'
                 ]
             ];
         }
