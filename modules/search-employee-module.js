@@ -16,7 +16,10 @@ export const SearchEmployeeModule = {
 				<div><label>Tên (regex)</label><input id="sName" placeholder="Ví dụ: ^N|Chi$" /></div>
 				<div><label>Phòng ban</label>
 					<select id="sDept"><option value="">Tất cả</option>${departments
-            .map((d) => `<option value="${d.id}">${escapeHTML(d.name || "")}</option>`)
+            .map(
+              (d) =>
+                `<option value="${d.id}">${escapeHTML(d.name || "")}</option>`
+            )
             .join("")}</select>
 				</div>
 				<div style="display:flex;gap:8px;">
@@ -34,17 +37,19 @@ export const SearchEmployeeModule = {
       {
         header: "Mã NV",
         cell: (row) =>
-          `<span style="background: var(--primary); color: white; padding: 4px 8px; border-radius: 6px; font-weight: 600; font-size: 12px;">#${row.id}</span>`,
+          `<span class="id-badge">#${escapeHTML(String(row.id || ""))}</span>`,
       },
       { header: "Tên", cell: (row) => escapeHTML(row.name || "-") },
       {
         header: "Phòng",
         cell: (row) =>
-          departments.find(
-            (department) =>
-              Number(department.id) ===
-              Number(row.departmentId || row.department_id)
-          )?.name || "-",
+          escapeHTML(
+            departments.find(
+              (department) =>
+                Number(department.id) ===
+                Number(row.departmentId || row.department_id)
+            )?.name || "-"
+          ),
       },
       {
         header: "Lương",
@@ -66,7 +71,8 @@ export const SearchEmployeeModule = {
         return;
       }
 
-      renderTable(tableWrap, columns, rows);
+      // Cho phép HTML trong cell đầu tiên (id-badge), các cell khác đã tự escape
+      renderTable(tableWrap, columns, rows, false);
     };
 
     // Load danh sách ban đầu
@@ -124,9 +130,10 @@ export const SearchEmployeeModule = {
 
         try {
           // Lọc trên dữ liệu đã cache để tránh gọi API lại
-          const source = Array.isArray(cachedEmployees) && cachedEmployees.length > 0
-            ? cachedEmployees
-            : await EmployeeDb.getAllEmployees();
+          const source =
+            Array.isArray(cachedEmployees) && cachedEmployees.length > 0
+              ? cachedEmployees
+              : await EmployeeDb.getAllEmployees();
 
           const rows = source.filter((emp) => {
             const okName = regex ? regex.test(emp.name) : true;

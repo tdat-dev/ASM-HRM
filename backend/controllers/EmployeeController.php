@@ -18,6 +18,13 @@ class EmployeeController {
         try {
             error_log("[EmployeeController] getAll() called");
             $employees = $this->employeeModel->getAllWithDetails();
+
+            // RBAC privacy: Manager không xem chi tiết lương của người khác
+            if (isset($_SESSION['role']) && $_SESSION['role'] === 'manager') {
+                foreach ($employees as &$e) {
+                    unset($e['salary'], $e['bonus'], $e['deduction']);
+                }
+            }
             error_log("[EmployeeController] getAllWithDetails() returned " . count($employees) . " employees");
             return [
                 'success' => true,
@@ -44,6 +51,10 @@ class EmployeeController {
                     'success' => false,
                     'message' => 'Không tìm thấy nhân viên'
                 ];
+            }
+
+            if (isset($_SESSION['role']) && $_SESSION['role'] === 'manager') {
+                unset($employee['salary'], $employee['bonus'], $employee['deduction']);
             }
             
             return [
@@ -155,6 +166,12 @@ class EmployeeController {
     public function search($filters) {
         try {
             $employees = $this->employeeModel->search($filters);
+
+            if (isset($_SESSION['role']) && $_SESSION['role'] === 'manager') {
+                foreach ($employees as &$e) {
+                    unset($e['salary'], $e['bonus'], $e['deduction']);
+                }
+            }
             
             return [
                 'success' => true,

@@ -38,6 +38,56 @@ const sidebar = document.querySelector(".sidebar");
 
 const THEME_KEY = "hrm_theme";
 const SIDEBAR_KEY = "hrm_sidebar_collapsed";
+const LAST_ROUTE_KEY = "hrm_last_route";
+
+// Lọc menu theo role
+function applyRoleUI(role) {
+  // Default: cho phép mọi route hiện có
+  const defaultAllowed = Object.keys(routes);
+  /** @type {Record<string, string[]>} */
+  const roleAllowed = {
+    admin: defaultAllowed,
+    hr: defaultAllowed,
+    manager: [
+      "dashboard",
+      "employees-search",
+      "directory",
+      "departments",
+      "positions",
+      "attendance",
+      "leave",
+      "performance",
+    ],
+    employee: [
+      "dashboard",
+      "attendance",
+      "leave",
+      "ess",
+      "directory",
+      "performance",
+    ],
+  };
+  const allowed = roleAllowed[role] || roleAllowed.employee;
+  // Lưu để navigate có thể kiểm tra
+  try {
+    localStorage.setItem("hrm_allowed_routes", JSON.stringify(allowed));
+  } catch {}
+
+  // Ẩn các nút không thuộc allowed
+  document.querySelectorAll(".menu [data-route]").forEach((btn) => {
+    const r = btn.getAttribute("data-route");
+    const shouldShow = allowed.includes(r);
+    btn.toggleAttribute("hidden", !shouldShow);
+    btn.classList.toggle("is-hidden", !shouldShow);
+    if (!shouldShow) {
+      btn.setAttribute("aria-hidden", "true");
+      btn.setAttribute("tabindex", "-1");
+    } else {
+      btn.removeAttribute("aria-hidden");
+      btn.removeAttribute("tabindex");
+    }
+  });
+}
 
 // Áp dụng theme sáng/tối bằng cách thêm class vào document
 function applyTheme(theme) {
@@ -153,7 +203,9 @@ function renderNotifyPanel() {
         (n) => `
         <div class="notify-item ${n.read ? "" : "unread"}">
           <div style="display:flex; justify-content: space-between; gap:8px; align-items: center;">
-            <div style="font-weight:700;">${escapeHTML(n.title || "Thông báo")}</div>
+            <div style="font-weight:700;">${escapeHTML(
+              n.title || "Thông báo"
+            )}</div>
             <button class="secondary" data-id="${String(
               Number(n.id) || ""
             )}" data-action="mark" title="Đánh dấu đã đọc"><i class="fas fa-check"></i></button>
@@ -402,7 +454,9 @@ const routes = {
         return;
       }
       // Lỗi khác, hiển thị thông báo chi tiết
-      const errorMessage = escapeHTML(error.message || "Đã xảy ra lỗi không xác định");
+      const errorMessage = escapeHTML(
+        error.message || "Đã xảy ra lỗi không xác định"
+      );
       viewEl.innerHTML = `
         <div class="card" style="text-align: center; padding: 40px;">
           <div class="alert error">
@@ -474,8 +528,20 @@ async function navigate(route) {
     return;
   }
 
+  // Kiểm tra route có được phép theo role hiện tại không
+  try {
+    const raw = localStorage.getItem("hrm_allowed_routes") || "[]";
+    const allowed = JSON.parse(raw);
+    if (Array.isArray(allowed) && !allowed.includes(route)) {
+      route = "dashboard";
+    }
+  } catch {}
+
   const fn = routes[route] || routes.dashboard;
   setActive(route);
+  try {
+    localStorage.setItem(LAST_ROUTE_KEY, route);
+  } catch {}
   fn();
 }
 
@@ -493,6 +559,27 @@ async function init() {
     await AuthModule.logout();
     showAuth();
   });
+
+  // Cập nhật tên và vai trò trong sidebar
+  try {
+    const session = await AuthModule.getSession();
+    if (session) {
+      const nameEl = document.getElementById("userName");
+      const roleEl = document.querySelector(".user-info .user-role");
+      if (nameEl) nameEl.textContent = session.username || "User";
+      if (roleEl) {
+        const roleLabel =
+          session.role === "admin"
+            ? "Quản trị viên"
+            : session.role === "hr"
+            ? "Nhân sự"
+            : session.role === "manager"
+            ? "Quản lý"
+            : "Nhân viên";
+        roleEl.textContent = roleLabel;
+      }
+    }
+  } catch {}
 
   // Nút chuông thông báo → mở panel nổi
   if (notifyToggleBtn) {
@@ -539,7 +626,14 @@ async function init() {
   if (session) {
     // Nếu đã đăng nhập, hiển thị app
     showApp();
-    await navigate("dashboard");
+    // Áp dụng quyền theo role lên UI (ẩn menu không dùng)
+    applyRoleUI(session.role);
+    let last = "dashboard";
+    try {
+      const stored = localStorage.getItem(LAST_ROUTE_KEY);
+      if (stored && routes[stored]) last = stored;
+    } catch {}
+    await navigate(last);
   }
   // Nếu chưa đăng nhập, giữ nguyên màn hình login
 }
@@ -901,11 +995,17 @@ function showAuth() {
       // Short delay for UX
       setTimeout(async () => {
         showApp();
-        await navigate("dashboard");
+        let last = "dashboard";
+        try {
+          const stored = localStorage.getItem(LAST_ROUTE_KEY);
+          if (stored && routes[stored]) last = stored;
+        } catch {}
+        await navigate(last);
       }, 500);
     } catch (err) {
-      alertEl.innerHTML = `<div class="alert error"><i class="fas fa-times-circle"></i> ${escapeHTML(err.message || "Đăng nhập thất bại")}</div>`;
-      alertEl.innerHTML = `<div class="alert error"><i class="fas fa-times-circle"></i> ${escapeHTML(err.message || "Đăng nhập thất bại")}</div>`;
+      alertEl.innerHTML = `<div class="alert error"><i class="fas fa-times-circle"></i> ${escapeHTML(
+        err.message || "Đăng nhập thất bại"
+      )}</div>`;
       authSubmit.disabled = false;
       authSubmit.classList.remove("loading");
       authSubmit.innerHTML = originalText;

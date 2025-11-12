@@ -1,4 +1,5 @@
 import { leaveAPI } from "../utils/api.js";
+import { AuthModule } from "./auth-module.js";
 import { validateEmployeeId, validateDateRange } from "../utils/validators.js";
 import { showToast, escapeHTML } from "../utils/dom.js";
 
@@ -71,24 +72,39 @@ export const LeaveModule = {
     // Render màn hình quản lý nghỉ phép và gắn các event handler liên quan
     titleEl.textContent = "Nghỉ phép";
     viewEl.innerHTML = "";
+    const session = await AuthModule.getSession();
+    const role = session?.role || "employee";
+
     const wrap = document.createElement("div");
     wrap.className = "card";
+
+    const showForm = !(role === "manager" || role === "hr"); // Manager/HR không cần form tạo đơn
+
     wrap.innerHTML = `
-			<form id="leaveForm" style="display:grid;gap:8px;max-width:520px;">
-				<input id="lvEmp" type="number" placeholder="Mã nhân viên" required />
-				<div><label>Từ ngày</label><input id="lvStart" type="date" required /></div>
-				<div><label>Đến ngày</label><input id="lvEnd" type="date" required /></div>
-				<div>
-					<label>Lý do nghỉ</label>
-					<textarea id="lvReason" rows="3" placeholder="Ví dụ: Nghỉ phép chăm sóc gia đình" required></textarea>
-				</div>
-				<button class="primary">Gửi yêu cầu</button>
-			</form>
-			<div style="margin-top:12px;">
-				<h3>Danh sách yêu cầu</h3>
-				<table class="table"><thead><tr><th>Emp</th><th>Khoảng</th><th>Lý do</th><th>Trạng thái</th><th></th></tr></thead><tbody id="lvBody"></tbody></table>
-			</div>
-		`;
+      ${showForm ? `
+        <form id="leaveForm" style="display:grid;gap:8px;max-width:520px;">
+          <input id="lvEmp" type="number" placeholder="Mã nhân viên" required />
+          <div><label>Từ ngày</label><input id="lvStart" type="date" required /></div>
+          <div><label>Đến ngày</label><input id="lvEnd" type="date" required /></div>
+          <div>
+            <label>Lý do nghỉ</label>
+            <textarea id="lvReason" rows="3" placeholder="Ví dụ: Nghỉ phép chăm sóc gia đình" required></textarea>
+          </div>
+          <button class="primary">Gửi yêu cầu</button>
+        </form>
+      ` : `
+        <div id="lvSummary" class="alert info">Đang tải số đơn pending...</div>
+      `}
+      <div style="margin-top:12px;">
+        <h3>Danh sách yêu cầu</h3>
+        <div class="table-wrapper">
+          <table class="table">
+            <thead><tr><th>Emp</th><th>Khoảng</th><th>Lý do</th><th>Trạng thái</th><th></th></tr></thead>
+            <tbody id="lvBody"></tbody>
+          </table>
+        </div>
+      </div>
+    `;
     viewEl.appendChild(wrap);
 
     const body = wrap.querySelector("#lvBody");
@@ -105,8 +121,11 @@ export const LeaveModule = {
 				<td>${leave.reason ? escapeHTML(leave.reason) : "-"}</td>
 				<td>${escapeHTML(leave.status || "-")}</td>
 				<td>${
-          leave.status === "pending"
-            ? `<button data-approve="${leave.id}">Duyệt</button>`
+          leave.status === "pending" && (role === "manager" || role === "hr")
+            ? `<div style="display:flex;gap:8px;">
+                 <button class="primary" data-approve="${leave.id}">Duyệt</button>
+                 <button class="danger" data-reject="${leave.id}">Từ chối</button>
+               </div>`
             : ""
         }</td>
 			</tr>`
@@ -118,21 +137,41 @@ export const LeaveModule = {
     };
     await render();
 
-    wrap.querySelector("#leaveForm").addEventListener("submit", async (e) => {
-      e.preventDefault();
-      const id = Number(wrap.querySelector("#lvEmp").value);
-      const s = wrap.querySelector("#lvStart").value;
-      const en = wrap.querySelector("#lvEnd").value;
-      const reason = wrap.querySelector("#lvReason").value;
+    // Pending summary cho Manager/HR
+    if (!showForm) {
       try {
-        await this.requestLeave(id, s, en, reason);
-        showToast("Đã gửi đơn nghỉ phép thành công.", "success");
-        e.target.reset();
-        await render();
-      } catch (err) {
-        showToast(err.message, "error");
-      }
-    });
+        const res = await leaveAPI.getPendingCount();
+        const pending = res.data?.count ?? 0;
+        const el = wrap.querySelector("#lvSummary");
+        if (el) {
+          el.className = pending > 0 ? "alert warning" : "alert success";
+          el.textContent =
+            pending > 0
+              ? `Có ${pending} đơn nghỉ phép đang chờ duyệt.`
+              : "Không có đơn nghỉ phép đang chờ.";
+        }
+      } catch {}
+    }
+
+    // Form tạo đơn cho nhân viên
+    const formEl = wrap.querySelector("#leaveForm");
+    if (formEl) {
+      formEl.addEventListener("submit", async (e) => {
+        e.preventDefault();
+        const id = Number(wrap.querySelector("#lvEmp").value);
+        const s = wrap.querySelector("#lvStart").value;
+        const en = wrap.querySelector("#lvEnd").value;
+        const reason = wrap.querySelector("#lvReason").value;
+        try {
+          await this.requestLeave(id, s, en, reason);
+          showToast("Đã gửi đơn nghỉ phép thành công.", "success");
+          e.target.reset();
+          await render();
+        } catch (err) {
+          showToast(err.message, "error");
+        }
+      });
+    }
 
     body.addEventListener("click", async (e) => {
       const t = e.target;
@@ -141,6 +180,15 @@ export const LeaveModule = {
         try {
           await this.approveLeave(id);
           showToast("Đã duyệt đơn nghỉ phép.", "success");
+          await render();
+        } catch (error) {
+          showToast(error.message, "error");
+        }
+      } else if (t.matches("[data-reject]")) {
+        const id = Number(t.getAttribute("data-reject"));
+        try {
+          await this.rejectLeave(id, "");
+          showToast("Đã từ chối đơn nghỉ phép.", "success");
           await render();
         } catch (error) {
           showToast(error.message, "error");

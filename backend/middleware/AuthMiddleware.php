@@ -21,8 +21,43 @@ class AuthMiddleware {
     private static $adminOnlyRoutes = [
         'DELETE:employees',
         'DELETE:departments',
-        'POST:leaves/approve',
-        'POST:leaves/reject',
+    ];
+
+    /**
+     * Simple role-based permissions map (demo)
+     * - In production, drive this by DB/policies
+     */
+    private static $rolePermissions = [
+        'admin' => ['*'],
+        'hr' => [
+            'GET:employees', 'POST:employees', 'PUT:employees', 'POST:employees/search',
+            'GET:employees/stats',
+            'GET:departments', 'POST:departments', 'PUT:departments',
+            'GET:positions', 'POST:positions', 'PUT:positions',
+            'GET:leaves', 'POST:leaves', 'POST:leaves/approve', 'POST:leaves/reject',
+            'GET:leaves/pending-count',
+            'GET:employee-profiles', 'PUT:employee-profiles', 'POST:employee-profiles/batch',
+            'GET:attendance', 'POST:attendance/checkin', 'POST:attendance/checkout', 'POST:attendance/report',
+            'GET:attendance/today-count',
+            'GET:reviews', 'POST:reviews',
+        ],
+        'manager' => [
+            'GET:employees', // ideally limited by department in controller
+            'GET:employees/stats',
+            'GET:departments', 'GET:positions',
+            'GET:leaves', 'POST:leaves/approve', 'POST:leaves/reject', 'GET:leaves/pending-count',
+            'POST:attendance/report', 'GET:attendance/today-count',
+            'GET:reviews',
+        ],
+        'employee' => [
+            'GET:employees', // can be restricted to self at controller
+            'GET:employees/stats',
+            'GET:departments', 'GET:positions',
+            'GET:employee-profiles', 'PUT:employee-profiles', // self only in controller
+            'GET:leaves', 'POST:leaves', 'GET:leaves/pending-count',
+            'POST:attendance/checkin', 'POST:attendance/checkout', 'GET:attendance/today-count',
+            'GET:reviews',
+        ],
     ];
     
     /**
@@ -64,18 +99,8 @@ class AuthMiddleware {
             exit();
         }
         
-        // Kiểm tra admin role cho các routes đặc biệt
-        if (self::requiresAdmin($method, $path)) {
-            if (!isset($_SESSION['role']) || $_SESSION['role'] !== 'admin') {
-                http_response_code(403);
-                echo json_encode([
-                    'success' => false,
-                    'message' => 'Forbidden - Chỉ admin mới có quyền',
-                    'error_code' => 'ADMIN_REQUIRED'
-                ], JSON_UNESCAPED_UNICODE);
-                exit();
-            }
-        }
+        // Kiểm tra role-based permissions
+        self::checkRolePermission($method, $path);
         
         return true;
     }
@@ -98,6 +123,46 @@ class AuthMiddleware {
         }
         
         return false;
+    }
+
+    /**
+     * Kiểm tra quyền theo role (đơn giản)
+     */
+    private static function checkRolePermission($method, $path) {
+        $routeKey = "$method:$path";
+        $role = $_SESSION['role'] ?? 'employee';
+
+        // Admin full access
+        if ($role === 'admin') {
+            return true;
+        }
+
+        // Admin-only hard rules
+        if (self::requiresAdmin($method, $path)) {
+            self::deny('ADMIN_REQUIRED', 'Forbidden - Chỉ admin mới có quyền');
+        }
+
+        $allowed = self::$rolePermissions[$role] ?? [];
+        // Exact match
+        if (in_array($routeKey, $allowed, true)) {
+            return true;
+        }
+        // Prefix match for grouped endpoints (e.g., GET:employee-profiles/123)
+        foreach ($allowed as $pattern) {
+            if ($pattern === '*') return true;
+            if (strpos($routeKey, $pattern) === 0) return true;
+        }
+        self::deny('RBAC_FORBIDDEN', 'Forbidden - Không đủ quyền truy cập');
+    }
+
+    private static function deny($code, $message) {
+        http_response_code(403);
+        echo json_encode([
+            'success' => false,
+            'message' => $message,
+            'error_code' => $code
+        ], JSON_UNESCAPED_UNICODE);
+        exit();
     }
     
     /**
