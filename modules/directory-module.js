@@ -65,6 +65,7 @@ export const DirectoryModule = {
     const editorWrapper = wrap.querySelector("#dirEditorWrapper");
     const drawer = wrap.querySelector("#dirDrawer");
     const drawerClose = wrap.querySelector("#drawerClose");
+    const layoutEl = wrap.querySelector(".directory-layout");
     const session = await AuthModule.getSession();
     const role = session?.role || "employee";
     const canEdit = role === "admin" || role === "hr";
@@ -84,11 +85,13 @@ export const DirectoryModule = {
     }
 
     // Panel hiển thị thông tin read-only khi không có quyền chỉnh sửa
-    const layoutEl = wrap.querySelector(".directory-layout");
-    const detailsPanel = document.createElement("div");
-    detailsPanel.id = "dirDetails";
-    detailsPanel.className = "directory-details card is-hidden";
-    layoutEl.appendChild(detailsPanel);
+    let detailsPanel = null;
+    if (layoutEl) {
+      detailsPanel = document.createElement("div");
+      detailsPanel.id = "dirDetails";
+      detailsPanel.className = "directory-details card is-hidden";
+      layoutEl.appendChild(detailsPanel);
+    }
     const cardRefs = new Map();
 
     let currentItems = [...employees];
@@ -176,7 +179,8 @@ export const DirectoryModule = {
       items.forEach((employee) => {
         const avatar = employee.profile_avatar || DEFAULT_AVATAR;
         const safeAvatar =
-          typeof avatar === "string" && (/^data:image\//i.test(avatar) || /^https?:\/\//i.test(avatar))
+          typeof avatar === "string" &&
+          (/^data:image\//i.test(avatar) || /^https?:\/\//i.test(avatar))
             ? avatar
             : DEFAULT_AVATAR;
         const skills = employee.profile_skills || "";
@@ -243,20 +247,20 @@ export const DirectoryModule = {
       if (!detailsPanel) return;
       const info = getEmployeeInfo(employee);
       const data = profile || {};
-      const avatar =
-        info.profile_avatar ||
-        data.avatar ||
-        DEFAULT_AVATAR;
+      const avatar = info.profile_avatar || data.avatar || DEFAULT_AVATAR;
 
       const emergency =
-        Array.isArray(data.emergencyContacts) && data.emergencyContacts.length > 0
+        Array.isArray(data.emergencyContacts) &&
+        data.emergencyContacts.length > 0
           ? `<section>
                <h4>Liên hệ khẩn cấp</h4>
                <ul>
                  ${data.emergencyContacts
                    .map(
                      (c) =>
-                       `<li><strong>${escapeHTML(c.name || "")}</strong> • ${escapeHTML(
+                       `<li><strong>${escapeHTML(
+                         c.name || ""
+                       )}</strong> • ${escapeHTML(
                          c.relation || "-"
                        )} • ${escapeHTML(c.phone || "-")}</li>`
                    )
@@ -273,7 +277,9 @@ export const DirectoryModule = {
                  ${data.dependents
                    .map(
                      (d) =>
-                       `<li><strong>${escapeHTML(d.name || "")}</strong> • ${escapeHTML(
+                       `<li><strong>${escapeHTML(
+                         d.name || ""
+                       )}</strong> • ${escapeHTML(
                          d.relation || "-"
                        )} • ${escapeHTML(d.dob || "-")}</li>`
                    )
@@ -312,7 +318,11 @@ export const DirectoryModule = {
             ${bank}
           </div>
         </div>
-        ${skillsSection || emergency || dependents ? `${skillsSection}${emergency}${dependents}` : '<p class="muted">Chưa có hồ sơ bổ sung.</p>'}
+        ${
+          skillsSection || emergency || dependents
+            ? `${skillsSection}${emergency}${dependents}`
+            : '<p class="muted">Chưa có hồ sơ bổ sung.</p>'
+        }
       `;
       detailsPanel.classList.remove("is-hidden");
     }

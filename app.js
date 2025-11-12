@@ -20,6 +20,7 @@ import { CoreHrModule } from "./modules/core-hr-module.js";
 import { DirectoryModule } from "./modules/directory-module.js";
 import { OrgChartModule } from "./modules/org-chart-module.js";
 import { escapeHTML } from "./utils/dom.js";
+import { safeJSONParse } from "./utils/storage.js";
 
 const viewEl = document.getElementById("view");
 const pageTitleEl = document.getElementById("pageTitle");
@@ -529,13 +530,10 @@ async function navigate(route) {
   }
 
   // Kiểm tra route có được phép theo role hiện tại không
-  try {
-    const raw = localStorage.getItem("hrm_allowed_routes") || "[]";
-    const allowed = JSON.parse(raw);
-    if (Array.isArray(allowed) && !allowed.includes(route)) {
-      route = "dashboard";
-    }
-  } catch {}
+  const allowed = safeJSONParse(localStorage.getItem("hrm_allowed_routes"), []);
+  if (Array.isArray(allowed) && !allowed.includes(route)) {
+    route = "dashboard";
+  }
 
   const fn = routes[route] || routes.dashboard;
   setActive(route);

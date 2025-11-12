@@ -10,6 +10,19 @@ class EmployeeController {
     public function __construct() {
         $this->employeeModel = new EmployeeModel();
     }
+
+    /**
+     * Ẩn thông tin nhạy cảm dựa trên vai trò
+     */
+    private function applyPrivacyFilter(&$employee) {
+        if (!is_array($employee)) {
+            return;
+        }
+
+        if (isset($_SESSION['role']) && $_SESSION['role'] === 'manager') {
+            unset($employee['salary'], $employee['bonus'], $employee['deduction']);
+        }
+    }
     
     /**
      * Lấy tất cả nhân viên
@@ -19,12 +32,10 @@ class EmployeeController {
             error_log("[EmployeeController] getAll() called");
             $employees = $this->employeeModel->getAllWithDetails();
 
-            // RBAC privacy: Manager không xem chi tiết lương của người khác
-            if (isset($_SESSION['role']) && $_SESSION['role'] === 'manager') {
-                foreach ($employees as &$e) {
-                    unset($e['salary'], $e['bonus'], $e['deduction']);
-                }
+            foreach ($employees as &$employee) {
+                $this->applyPrivacyFilter($employee);
             }
+            unset($employee);
             error_log("[EmployeeController] getAllWithDetails() returned " . count($employees) . " employees");
             return [
                 'success' => true,
@@ -53,9 +64,7 @@ class EmployeeController {
                 ];
             }
 
-            if (isset($_SESSION['role']) && $_SESSION['role'] === 'manager') {
-                unset($employee['salary'], $employee['bonus'], $employee['deduction']);
-            }
+            $this->applyPrivacyFilter($employee);
             
             return [
                 'success' => true,
@@ -167,11 +176,10 @@ class EmployeeController {
         try {
             $employees = $this->employeeModel->search($filters);
 
-            if (isset($_SESSION['role']) && $_SESSION['role'] === 'manager') {
-                foreach ($employees as &$e) {
-                    unset($e['salary'], $e['bonus'], $e['deduction']);
-                }
+            foreach ($employees as &$employee) {
+                $this->applyPrivacyFilter($employee);
             }
+            unset($employee);
             
             return [
                 'success' => true,
